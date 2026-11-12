@@ -13,6 +13,13 @@ eventString: "{{ actor.name }} decides to wash."
 eligibilityRules:
   - conditions:
       - decoratorName: "get_global_value"
+        arguments: ["OBDC_DnBFound"]
+        comparisonOperator: "=="
+        expectedValue: 1
+    logicalOperator: "AND"
+    required: true
+  - conditions:
+      - decoratorName: "get_global_value"
         arguments: ["OBDC_WashUpEnabled"]
         comparisonOperator: "=="
         expectedValue: 1

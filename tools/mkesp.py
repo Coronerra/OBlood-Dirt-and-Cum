@@ -24,11 +24,12 @@ def alias(aid, name, flags, forced=None):
     s.append(sub('ALED', b''))
     return s
 
-MAINQ, MCMQ, G_WASH, G_PROMPT, G_CUM = OWN | 0x800, OWN | 0x801, OWN | 0x802, OWN | 0x803, OWN | 0x804
-globs = [rec('GLOB', fid, [sub('EDID', z(ed)), sub('FNAM', b'f'), sub('FLTV', struct.pack('<f', 1.0))])
-         for ed, fid in (('OBDC_WashUpEnabled', G_WASH), ('OBDC_PromptEnabled', G_PROMPT), ('OBDC_CumPromptEnabled', G_CUM))]
+MAINQ, MCMQ, G_WASH, G_PROMPT, G_CUM, G_DNB = OWN | 0x800, OWN | 0x801, OWN | 0x802, OWN | 0x803, OWN | 0x804, OWN | 0x805
+# 0.1 records keep their FormIDs; 0.2 adds OBDC_DnBFound (set by the script on every load)
+globs = [rec('GLOB', fid, [sub('EDID', z(ed)), sub('FNAM', b'f'), sub('FLTV', struct.pack('<f', val))])
+         for ed, fid, val in (('OBDC_WashUpEnabled', G_WASH, 1.0), ('OBDC_PromptEnabled', G_PROMPT, 1.0), ('OBDC_CumPromptEnabled', G_CUM, 1.0), ('OBDC_DnBFound', G_DNB, 0.0))]
 main_props = [pobj('PlayerRef', 0x14), pobj('PlayerAlias', MAINQ, 0),
-              pobj('OBDC_WashUpEnabled', G_WASH), pobj('OBDC_PromptEnabled', G_PROMPT), pobj('OBDC_CumPromptEnabled', G_CUM),
+              pobj('OBDC_WashUpEnabled', G_WASH), pobj('OBDC_PromptEnabled', G_PROMPT), pobj('OBDC_CumPromptEnabled', G_CUM), pobj('OBDC_DnBFound', G_DNB),
               pobj('ActorTypeNPC', 0x13794)]
 v_main = vmad_quest([script('OBDC_Main', main_props)], [(0, MAINQ, [script('OBDC_PlayerAlias', [pobj('Main', MAINQ)])])])
 qmain = rec('QUST', MAINQ, [sub('EDID', z('OBDC_Quest')), sub('VMAD', v_main), sub('FULL', z("O'Blood, Dirt and Cum")),
@@ -39,8 +40,8 @@ qmcm = rec('QUST', MCMQ, [sub('EDID', z('OBDC_MCMQuest')), sub('VMAD', v_mcm), s
     sub('DNAM', bytes.fromhex('110132ff0000000000000000')), sub('FLTR', z('OBlood_Dirt_and_Cum\\')), sub('NEXT', b''),
     sub('ANAM', struct.pack('<I', 1))] + alias(0, 'PlayerAlias', 0, 0x14))
 nrec = 2 + len(globs)
-hdr = rec('TES4', 0, [sub('HEDR', struct.pack('<fII', 1.71, nrec, 0x805)), sub('CNAM', z('That Guy (Coronerra)')),
-    sub('SNAM', z("O'Blood, Dirt and Cum v0.1. SkyrimNet companion for Dirt and Blood; optional OCum wash-off. By That Guy (Coronerra).")),
+hdr = rec('TES4', 0, [sub('HEDR', struct.pack('<fII', 1.71, nrec, 0x806)), sub('CNAM', z('That Guy (Coronerra)')),
+    sub('SNAM', z("O'Blood, Dirt and Cum v0.2. SkyrimNet companion for Dirt and Blood and/or OCum (each optional). By That Guy (Coronerra).")),
     sub('MAST', z('Skyrim.esm')), sub('DATA', struct.pack('<Q', 0))], flags=0x200)
 out = sys.argv[1] if len(sys.argv) > 1 else 'OBlood_Dirt_and_Cum.esp'
 open(out, 'wb').write(hdr + grup('QUST', [qmain, qmcm]) + grup('GLOB', globs))

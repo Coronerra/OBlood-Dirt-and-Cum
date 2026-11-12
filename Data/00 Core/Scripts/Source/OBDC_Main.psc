@@ -1,6 +1,9 @@
 Scriptname OBDC_Main extends Quest
-{O'Blood, Dirt and Cum v0.1. A SkyrimNet companion for Dirt and Blood, by That Guy (Coronerra).
- Tells SkyrimNet what Dirt and Blood is doing, and washes OCum's cum off during a real Dirt and Blood bath.
+{O'Blood, Dirt and Cum v0.2. A SkyrimNet companion for Dirt and Blood and/or OCum, by That Guy (Coronerra).
+ Both are optional and found at run time; at least one is needed for the mod to do anything:
+   Dirt and Blood only: hygiene facts, state and bath events, bath memories, WashUp.
+   OCum only: nothing runs in Papyrus; the hygiene prompt tells SkyrimNet who has cum on them.
+   Both: all of the above, and a real Dirt and Blood bath washes OCum's cum off.
  Dirt and Blood, OCum, Tull Animated Creampie and Liquid Pack are found at run time with GetFormFromFile;
  none of them is a master and nothing of them is overridden.}
 
@@ -12,6 +15,7 @@ OBDC_PlayerAlias Property PlayerAlias Auto
 GlobalVariable Property OBDC_WashUpEnabled Auto       ; read by the WashUp action's eligibility rule
 GlobalVariable Property OBDC_PromptEnabled Auto       ; read by the hygiene prompt
 GlobalVariable Property OBDC_CumPromptEnabled Auto    ; read by the hygiene prompt (cum fact)
+GlobalVariable Property OBDC_DnBFound Auto            ; 1 while Dirt and Blood is found; read by the WashUp action's eligibility rule (0.2)
 Keyword Property ActorTypeNPC Auto
 
 string Property DNB_ESP = "Dirt and Blood - Dynamic Visuals.esp" AutoReadOnly
@@ -30,7 +34,7 @@ float Property CUM_NARRATION_RANGE = 4096.0 AutoReadOnly
 float Property WITNESS_RADIUS = 1500.0 AutoReadOnly
 int Property WITNESS_MAX = 3 AutoReadOnly
 int Property WASHUP_COOLDOWN = 30 AutoReadOnly
-int Property VERSION = 1 AutoReadOnly                ; 0.1
+int Property VERSION = 2 AutoReadOnly                ; 0.2
 
 ; ---------------------------------------------------------------------------------------------
 ;  Settings (MCM; first defaults come from settings.json written by the installer)
@@ -119,16 +123,19 @@ Function Startup()
 	iScanLeft = 0
 	bPendNarr = false
 	UnregisterForUpdate()
+	UnregisterForModEvent("OBDC_DoWash")
 	If bDnB
 		PlayerAlias.Arm(fxTier, fxSoapy, kNPCBathSpell)
 		iLastTier = CurrentTier(PlayerRef)
+		RegisterForModEvent("OBDC_DoWash", "OnDoWash")
 	Else
+		; OCum only, or nothing found: no listeners, no updates. The prompt alone carries OCum's cum fact.
 		PlayerAlias.Disarm()
+		iLastTier = -1
 	EndIf
-	UnregisterForModEvent("OBDC_DoWash")
-	RegisterForModEvent("OBDC_DoWash", "OnDoWash")
+	SetDnBFound()
 	ApplyWashUpToggle()
-	Log("started. Dirt and Blood " + bDnB + ", OCum " + bOCum + " (" + nMeshItems + " mesh items), Malignis flag " + bMalignis + ", Malignis plugin " + bMalignisLoaded + ", player tier " + TierName(iLastTier))
+	Log("started (" + ModeName() + "). Dirt and Blood " + bDnB + ", OCum " + bOCum + " (" + nMeshItems + " mesh items), Malignis flag " + bMalignis + ", Malignis plugin " + bMalignisLoaded + ", player tier " + TierName(iLastTier))
 EndFunction
 
 Function ReadSettings(bool abForce)
@@ -159,7 +166,14 @@ Function Resolve()
 	ResolveOCum()
 	bDnB = false
 	kBathQuest = None
+	kBathingActors = None
+	kSoaps = None
+	gSoapReq = None
+	gWaterReq = None
+	fxSoapy = None
+	kNPCBathSpell = None
 	If !Game.IsPluginInstalled(DNB_ESP)
+		fxTier = new MagicEffect[1]     ; no tiers: CurrentTier / CodeFor see Length < 9
 		return
 	EndIf
 	kBathQuest = Game.GetFormFromFile(0xDC3, DNB_ESP) as Dirty_BathingQuest
@@ -199,6 +213,27 @@ EndFunction
 Function SetTier(int i, int aiFormID, int aiCode)
 	fxTier[i] = Game.GetFormFromFile(aiFormID, DNB_ESP) as MagicEffect
 	tierCode[i] = aiCode
+EndFunction
+
+; The WashUp action is only offered while Dirt and Blood is found (eligibility rule on OBDC_DnBFound).
+Function SetDnBFound()
+	If !OBDC_DnBFound
+		OBDC_DnBFound = Game.GetFormFromFile(0x805, "OBlood_Dirt_and_Cum.esp") as GlobalVariable   ; a 0.1 save before the property was filled
+	EndIf
+	If OBDC_DnBFound
+		OBDC_DnBFound.SetValue(bDnB as float)
+	EndIf
+EndFunction
+
+string Function ModeName()
+	If bDnB && bOCum
+		return "Dirt and Blood + OCum"
+	ElseIf bDnB
+		return "Dirt and Blood only"
+	ElseIf bOCum
+		return "OCum only"
+	EndIf
+	return "neither Dirt and Blood nor OCum found"
 EndFunction
 
 ; OCum Ascended 4.1.1 forms, and the mesh items the OCum Tull and Liquid add-on and Beast Pie put on.
@@ -772,7 +807,7 @@ EndFunction
 ; =============================================================================================
 Function ApplyWashUpToggle()
 	SkyrimNetApi.SetActionCooldown(ACTION_NAME, WASHUP_COOLDOWN)
-	If OBDC_WashUpEnabled && OBDC_WashUpEnabled.GetValue() != 1.0
+	If !bDnB || (OBDC_WashUpEnabled && OBDC_WashUpEnabled.GetValue() != 1.0)
 		If SkyrimNetApi.IsActionRegistered(ACTION_NAME)
 			SkyrimNetApi.UnregisterAction(ACTION_NAME)
 		EndIf

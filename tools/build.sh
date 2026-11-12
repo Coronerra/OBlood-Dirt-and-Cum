@@ -2,7 +2,7 @@
 # Build O'Blood, Dirt and Cum: compile, write the plugin, fill Data/00 Core, make the release zip.
 set -e
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-VER=0.1
+VER=0.2
 cd "$ROOT"
 tools/compile.sh
 python3 tools/mkesp.py build/OBlood_Dirt_and_Cum.esp

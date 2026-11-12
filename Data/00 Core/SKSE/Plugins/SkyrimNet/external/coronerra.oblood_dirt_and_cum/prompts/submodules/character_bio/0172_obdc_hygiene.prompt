@@ -1,4 +1,5 @@
-{# O'Blood, Dirt and Cum v0.1 (That Guy / Coronerra). Plain facts about Dirt and Blood state, and (optional) OCum cum; never tells anyone what to do.
+{# O'Blood, Dirt and Cum v0.2 (That Guy / Coronerra). Plain facts about Dirt and Blood state and OCum cum; never tells anyone what to do.
+   Dirt and Blood and OCum are each optional: each part renders only when its plugin is loaded (OCum only: just the cum fact; Dirt and Blood only: cum stays silent).
    Renders NOTHING when: the plugin or this mod's OBDC_PromptEnabled global is off, or there is nothing to say.
    Dirt and Blood part (only when Dirt and Blood is loaded): quiet for Clean and Dirt1, and for NPCs whose Dirt and Blood options are off.
    Player: the exclusive tier effects Dirty_Effect_*. NPCs: Dirt and Blood's conditional NPC effects, read ONLY while the Dirt and Blood global that drives them is 1
