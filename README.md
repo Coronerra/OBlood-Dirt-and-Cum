@@ -1,3 +1,5 @@
+![O'Blood, Dirt and Cum](docs/OBlood_Dirt_and_Cum_cover.jpg)
+
 # O'Blood, Dirt and Cum
 
 **v0.1** · By **That Guy (Coronerra)** · Skyrim Special Edition · ESL-flagged plugin · Adults only
@@ -134,6 +136,7 @@ Sent with SKSE `ModEvent`. Register with `RegisterForModEvent("<name>", "<your e
 Turn off the MCM toggles, save, disable the plugin and remove the mod. The scripts keep no data outside your save except settings.json.
 
 ## 10. Repository contents and building
+- `docs/`: cover art (`OBlood_Dirt_and_Cum_cover.jpg`). This is for the repository only; it is not in the install zip.
 - `Data/`: exactly what the release zip installs (`00 Core`, `01 Malignis Flag`, `fomod`).
 - `src/`: Papyrus sources (`OBDC_Main`, `OBDC_PlayerAlias`, `OBDC_MCM`, and `OBDC_OCum`, the only script that names OCum's and RaceMenu's types; it is only called after `OCum.esp` is confirmed loaded).
 - `tools/`: `compile.sh` (Caprica, Skyrim flags), `mkesp.py` (writes the plugin), `verify.py` (parses it back), `scrub.py` (strips build paths from .pex), `mkzip.py` (the release zip), and compile-only stubs in `tools/stubs/` (never shipped).
