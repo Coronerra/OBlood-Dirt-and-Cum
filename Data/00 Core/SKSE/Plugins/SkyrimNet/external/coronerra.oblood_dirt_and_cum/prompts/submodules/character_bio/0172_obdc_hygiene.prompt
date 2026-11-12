@@ -1,0 +1,86 @@
+{# O'Blood, Dirt and Cum v0.1 (That Guy / Coronerra). Plain facts about Dirt and Blood state, and (optional) OCum cum; never tells anyone what to do.
+   Renders NOTHING when: the plugin or this mod's OBDC_PromptEnabled global is off, or there is nothing to say.
+   Dirt and Blood part (only when Dirt and Blood is loaded): quiet for Clean and Dirt1, and for NPCs whose Dirt and Blood options are off.
+   Player: the exclusive tier effects Dirty_Effect_*. NPCs: Dirt and Blood's conditional NPC effects, read ONLY while the Dirt and Blood global that drives them is 1
+   (Dirty_NPCsGetBloodyTrue for blood and the follower blood bottles, Dirty_BanditsDirt, Dirty_ProfessionsDirt).
+   "Washing right now": Dirt_MagicEffectSoapy (lather) or the Dirty_NPCisWashingNow spell (NPC rinse/dry). Dirty_Effect_SwimmingNPC is not read: it also sits,
+   conditioned, in every NPC's blood ability.
+   Cum part (only when OCum.esp is loaded and OBDC_CumPromptEnabled is 1): OCum's own markers, OCum_HasCumFaction or OCumMagicEffect (keyword OCumAppliedCum).
+   Both go away when OCum's timer runs out, on a swim (OCum) or in a Dirt and Blood bath (this mod). Completely silent without OCum.
+   Replaces the older overlay 1010_dirtandblood.prompt (remove that one). #}
+{% if render_mode == "full" or render_mode == "thoughts" or render_mode == "dialogue_target" %}
+{% if get_global_value("OBDC_PromptEnabled") == 1 %}
+{% if actorUUID and actorUUID != 0 %}
+{% set dnb_actor = decnpc(actorUUID) %}
+{% if dnb_actor and dnb_actor.UUID %}
+{% set dnb_pc = is_player(actorUUID) %}
+{% set dnb_first = (not dnb_pc) and (render_mode == "full" or render_mode == "thoughts") %}
+{% set dnb_blood = "" %}
+{% set dnb_dirt = "" %}
+{% set dnb_work = false %}
+{% set dnb_wash = false %}
+{% set dnb_cum = false %}
+{% if is_plugin_loaded(lower("Dirt and Blood - Dynamic Visuals.esp")) %}
+{% set dnb_wash = has_magic_effect(actorUUID, "Dirt_MagicEffectSoapy") %}
+{% if dnb_pc %}
+{% if has_magic_effect(actorUUID, "Dirty_Effect_Blood4") %}{% set dnb_blood = "soaked in blood" %}
+{% elif has_magic_effect(actorUUID, "Dirty_Effect_Blood3") %}{% set dnb_blood = "covered in blood" %}
+{% elif has_magic_effect(actorUUID, "Dirty_Effect_Blood2") %}{% set dnb_blood = "bloodstained" %}
+{% elif has_magic_effect(actorUUID, "Dirty_Effect_Blood1") %}{% set dnb_blood = "spattered with blood" %}
+{% elif has_magic_effect(actorUUID, "Dirty_Effect_Dirt4") %}{% set dnb_dirt = "filthy" %}
+{% elif has_magic_effect(actorUUID, "Dirty_Effect_Dirt3") %}{% set dnb_dirt = "very dirty" %}
+{% elif has_magic_effect(actorUUID, "Dirty_Effect_Dirt2") %}{% set dnb_dirt = "dirty" %}
+{% endif %}
+{% else %}
+{% if has_spell(actorUUID, "Dirty_NPCisWashingNow") %}{% set dnb_wash = true %}{% endif %}
+{% if get_global_value("Dirty_NPCsGetBloodyTrue") == 1 %}
+{% if has_magic_effect(actorUUID, "Dirty_NPCEffect_Blood5") or has_magic_effect(actorUUID, "Dirty_NPCEffect_Blood4") %}{% set dnb_blood = "soaked in blood" %}
+{% elif has_magic_effect(actorUUID, "Dirty_NPCEffect_Blood3") %}{% set dnb_blood = "covered in blood" %}
+{% elif has_magic_effect(actorUUID, "Dirty_NPCEffect_Blood2") %}{% set dnb_blood = "bloodstained" %}
+{% elif has_magic_effect(actorUUID, "Dirty_NPCEffect_Blood1") %}{% set dnb_blood = "spattered with blood" %}
+{% endif %}
+{% endif %}
+{% if get_global_value("Dirty_BanditsDirt") == 1 %}
+{% if has_magic_effect(actorUUID, "Dirty_NPCEffect_Dirt4_Bandits_Fix") %}{% set dnb_dirt = "filthy" %}
+{% elif has_magic_effect(actorUUID, "Dirty_NPCEffect_Dirt3_Bandits_Fix") %}{% set dnb_dirt = "very dirty" %}
+{% elif has_magic_effect(actorUUID, "Dirty_NPCEffect_Dirt2_Bandits_Fix") %}{% set dnb_dirt = "dirty" %}
+{% endif %}
+{% endif %}
+{% if dnb_dirt == "" and get_global_value("Dirty_ProfessionsDirt") == 1 %}
+{% if has_magic_effect(actorUUID, "Dirty_NPCEffect_Dirt3_Professions_Fix") %}{% set dnb_dirt = "very dirty" %}{% set dnb_work = true %}
+{% elif has_magic_effect(actorUUID, "Dirty_NPCEffect_Dirt2_Professions_Fix") %}{% set dnb_dirt = "dirty" %}{% set dnb_work = true %}
+{% endif %}
+{% endif %}
+{% endif %}
+{% endif %}
+{% if get_global_value("OBDC_CumPromptEnabled") == 1 and is_plugin_loaded(lower("OCum.esp")) %}
+{% if is_in_faction(actorUUID, "OCum_HasCumFaction") or has_magic_effect(actorUUID, "OCumMagicEffect") %}{% set dnb_cum = true %}{% endif %}
+{% endif %}
+{% if dnb_blood != "" or dnb_dirt != "" or dnb_wash or dnb_cum %}
+## Hygiene
+{% if dnb_first %}
+{% if dnb_blood != "" and dnb_dirt != "" %}You are {{ dnb_blood }} and {{ dnb_dirt }}.
+{% elif dnb_blood != "" %}You are {{ dnb_blood }}.
+{% elif dnb_work %}You are {{ dnb_dirt }} from your work.
+{% elif dnb_dirt != "" %}You are {{ dnb_dirt }}.
+{% endif %}
+{% if dnb_cum %}You have cum on you.
+{% endif %}
+{% if dnb_wash %}You are washing right now.
+{% endif %}
+{% else %}
+{% if dnb_blood != "" and dnb_dirt != "" %}{{ dnb_actor.name }} is {{ dnb_blood }} and {{ dnb_dirt }}.
+{% elif dnb_blood != "" %}{{ dnb_actor.name }} is {{ dnb_blood }}.
+{% elif dnb_work %}{{ dnb_actor.name }} is {{ dnb_dirt }} from work.
+{% elif dnb_dirt != "" %}{{ dnb_actor.name }} is {{ dnb_dirt }}.
+{% endif %}
+{% if dnb_cum %}{{ dnb_actor.name }} has cum on them.
+{% endif %}
+{% if dnb_wash %}{{ dnb_actor.name }} is washing right now.
+{% endif %}
+{% endif %}
+{% endif %}
+{% endif %}
+{% endif %}
+{% endif %}
+{% endif %}

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<fomod>
+  <Name>O'Blood, Dirt and Cum</Name>
+  <Author>That Guy (Coronerra)</Author>
+  <Version>0.1</Version>
+  <Website>https://github.com/Coronerra/OBlood-Dirt-and-Cum</Website>
+  <Description>Standalone SkyrimNet companion for Dirt and Blood - Dynamic Visuals (requires Dirt and Blood; does not replace it). Plain-fact hygiene in character bios, state and bath events, bath memories, and a WashUp action for followers that uses Dirt and Blood's own bath and follows its soap and water rules. If OCum is installed (optional, detected automatically), any real Dirt and Blood bath also washes OCum's cum off, with a short SkyrimNet narration, and NPCs know when someone has cum on them. Adults only.</Description>
+  <Groups>
+    <element>Immersion</element>
+  </Groups>
+</fomod>

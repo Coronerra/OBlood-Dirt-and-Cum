@@ -1,0 +1,13 @@
+{
+    "int": {
+        "malignis": 1,
+        "narration": 1,
+        "memories": 1,
+        "bystanders": 1,
+        "state_events": 1,
+        "washup": 1,
+        "cum_wash": 1,
+        "cum_narration": 1,
+        "cum_prompt": 1
+    }
+}

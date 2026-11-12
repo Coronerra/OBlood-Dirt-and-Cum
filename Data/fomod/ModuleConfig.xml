@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://qconsulting.ca/fo3/ModConfig5.0.xsd">
+  <moduleName>O'Blood, Dirt and Cum 0.1</moduleName>
+  <requiredInstallFiles>
+    <folder source="00 Core" destination="" priority="0" />
+  </requiredInstallFiles>
+  <installSteps order="Explicit">
+    <installStep name="Options">
+      <optionalFileGroups order="Explicit">
+        <group name="Animations" type="SelectAny">
+          <plugins order="Explicit">
+            <plugin name="I use Malignis Animations with Dirt and Blood">
+              <description>Tick this only if you use the Malignis Animations bathing patch for Dirt and Blood ("Dirt and Blood - Malignis Animations Patch.esp"). REQUIRED for this option: Malignis Animations, https://www.nexusmods.com/skyrimspecialedition/mods/166293 , and its Dirt and Blood patch. This option installs no Malignis files; it only sets a flag in SKSE/Plugins/OBlood_Dirt_and_Cum/settings.json. The flag is shown in the MCM and used in the log (a woman's bath runs about 65 seconds with Malignis instead of about 25). Bath ends are always detected the same way, so leaving this unticked is safe.</description>
+              <files>
+                <folder source="01 Malignis Flag" destination="" priority="1" />
+              </files>
+              <typeDescriptor>
+                <dependencyType>
+                  <defaultType name="Optional" />
+                  <patterns>
+                    <pattern>
+                      <dependencies operator="And">
+                        <fileDependency file="Dirt and Blood - Malignis Animations Patch.esp" state="Active" />
+                      </dependencies>
+                      <type name="Recommended" />
+                    </pattern>
+                  </patterns>
+                </dependencyType>
+              </typeDescriptor>
+            </plugin>
+          </plugins>
+        </group>
+      </optionalFileGroups>
+    </installStep>
+  </installSteps>
+</config>

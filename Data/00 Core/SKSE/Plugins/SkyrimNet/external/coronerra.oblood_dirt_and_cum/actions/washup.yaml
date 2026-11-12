@@ -1,0 +1,55 @@
+name: WashUp
+description: "Wash yourself right here with Dirt and Blood's bath: undress, scrub off dirt and blood, rinse and dress again. Only works where there is water to wash in, and with soap if soap is required. Choose it only when you actually want to get clean now."
+questEditorId: OBDC_Quest
+scriptName: OBDC_Main
+executionFunctionName: WashUpNow
+parameterMapping:
+  - type: speaker
+    name: akActor
+    description: Speaker Actor parameter (triggering entity)
+enabled: true
+defaultPriority: 5
+eventString: "{{ actor.name }} decides to wash."
+eligibilityRules:
+  - conditions:
+      - decoratorName: "get_global_value"
+        arguments: ["OBDC_WashUpEnabled"]
+        comparisonOperator: "=="
+        expectedValue: 1
+    logicalOperator: "AND"
+    required: true
+  - conditions:
+      - decoratorName: "is_follower"
+        arguments: ["currentActor"]
+        comparisonOperator: "=="
+        expectedValue: true
+    logicalOperator: "AND"
+    required: true
+  - conditions:
+      - decoratorName: "is_in_combat"
+        arguments: ["currentActor"]
+        comparisonOperator: "=="
+        expectedValue: false
+    logicalOperator: "AND"
+    required: true
+  - conditions:
+      - decoratorName: "has_weapon_drawn"
+        arguments: ["currentActor"]
+        comparisonOperator: "=="
+        expectedValue: false
+    logicalOperator: "AND"
+    required: true
+  - conditions:
+      - decoratorName: "get_faction_rank"
+        arguments: ["currentActor", "SexLabAnimatingFaction"]
+        comparisonOperator: "<"
+        expectedValue: 0
+    logicalOperator: "AND"
+    required: true
+  - conditions:
+      - decoratorName: "get_faction_rank"
+        arguments: ["currentActor", "OStimExcitementFaction"]
+        comparisonOperator: "<"
+        expectedValue: 0
+    logicalOperator: "AND"
+    required: true

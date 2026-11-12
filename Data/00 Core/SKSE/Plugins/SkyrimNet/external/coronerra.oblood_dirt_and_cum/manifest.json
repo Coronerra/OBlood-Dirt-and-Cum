@@ -1,0 +1,28 @@
+{
+    "id": "coronerra.oblood_dirt_and_cum",
+    "type": "bundle",
+    "title": "O'Blood, Dirt and Cum",
+    "tagline": "SkyrimNet knows when someone is dirty, bloody, cum-covered or bathing in Dirt and Blood, and a bath washes OCum's cum off too.",
+    "description": "Standalone SkyrimNet companion for Dirt and Blood - Dynamic Visuals (a companion, not a replacement). A character_bio prompt states plain facts about dirt, blood and (with OCum) cum, and the WashUp action lets a follower wash with Dirt and Blood's own bath, following its soap and water rules. The plugin OBlood_Dirt_and_Cum.esp adds state events, bath memories, public mod events and, with OCum installed, washes OCum's cum off during any real Dirt and Blood bath. By That Guy (Coronerra).",
+    "author": "That Guy (Coronerra)",
+    "tags": [
+        "Action",
+        "immersion"
+    ],
+    "nsfw": true,
+    "icon": "scroll",
+    "version": "0.1.0",
+    "min_skyrimnet_version": "0.28.0",
+    "mods": [
+        {
+            "name": "Dirt and Blood - Dynamic Visuals",
+            "file": "dirt and blood - dynamic visuals.esp",
+            "required": true
+        },
+        {
+            "name": "O'Blood, Dirt and Cum",
+            "file": "oblood_dirt_and_cum.esp",
+            "required": true
+        }
+    ]
+}
