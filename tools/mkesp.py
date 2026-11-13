@@ -41,7 +41,7 @@ qmcm = rec('QUST', MCMQ, [sub('EDID', z('OBDC_MCMQuest')), sub('VMAD', v_mcm), s
     sub('ANAM', struct.pack('<I', 1))] + alias(0, 'PlayerAlias', 0, 0x14))
 nrec = 2 + len(globs)
 hdr = rec('TES4', 0, [sub('HEDR', struct.pack('<fII', 1.71, nrec, 0x806)), sub('CNAM', z('That Guy (Coronerra)')),
-    sub('SNAM', z("O'Blood, Dirt and Cum v0.2. SkyrimNet companion for Dirt and Blood and/or OCum (each optional). By That Guy (Coronerra).")),
+    sub('SNAM', z("O'Blood, Dirt and Cum v0.3. SkyrimNet companion for Dirt and Blood and/or OCum (each optional). By That Guy (Coronerra).")),
     sub('MAST', z('Skyrim.esm')), sub('DATA', struct.pack('<Q', 0))], flags=0x200)
 out = sys.argv[1] if len(sys.argv) > 1 else 'OBlood_Dirt_and_Cum.esp'
 open(out, 'wb').write(hdr + grup('QUST', [qmain, qmcm]) + grup('GLOB', globs))

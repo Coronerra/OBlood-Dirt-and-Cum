@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3
+- **Works around OStimNet's OCum prompts** (OStimNet itself is not changed). The cum fact moved out of `## Hygiene` into its own submodule, `0402_obdc_cum_covering.prompt`:
+  - If OStimNet (`TT_OStimNet.esp`) is loaded and its `ocum_description` has text for the character, this mod prints nothing; OStimNet's details stand.
+  - If that description is empty, or OStimNet is not installed, but OCum still marks the character (faction or effect: meshes, 3D not loaded, and so on), this mod prints "You have cum on you." / "<name> has cum on them." under `### Cum covering`, the same heading OStimNet uses, so OStimNet's reaction rule still applies.
+  - OStimNet's decorator is only called when `TT_OStimNet.esp` is loaded. No reaction instructions added; still facts-only.
+- `0172_obdc_hygiene.prompt` now holds only dirt, blood and washing.
+- Version strings 0.3 (MCM, plugin description, manifest, FOMOD). No new plugin records; update in place from 0.1 or 0.2.
+
 ## 0.2
 - Dirt and Blood and OCum are now **each optional**, detected when the game loads. At least one is needed.
   - OCum only: the hygiene prompt tells SkyrimNet who "has cum on them". Nothing is registered in Papyrus (no alias events, no updates, no WashUp).

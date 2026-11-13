@@ -1,5 +1,5 @@
 Scriptname OBDC_Main extends Quest
-{O'Blood, Dirt and Cum v0.2. A SkyrimNet companion for Dirt and Blood and/or OCum, by That Guy (Coronerra).
+{O'Blood, Dirt and Cum v0.3. A SkyrimNet companion for Dirt and Blood and/or OCum, by That Guy (Coronerra).
  Both are optional and found at run time; at least one is needed for the mod to do anything:
    Dirt and Blood only: hygiene facts, state and bath events, bath memories, WashUp.
    OCum only: nothing runs in Papyrus; the hygiene prompt tells SkyrimNet who has cum on them.
@@ -34,7 +34,7 @@ float Property CUM_NARRATION_RANGE = 4096.0 AutoReadOnly
 float Property WITNESS_RADIUS = 1500.0 AutoReadOnly
 int Property WITNESS_MAX = 3 AutoReadOnly
 int Property WASHUP_COOLDOWN = 30 AutoReadOnly
-int Property VERSION = 2 AutoReadOnly                ; 0.2
+int Property VERSION = 3 AutoReadOnly                ; 0.3
 
 ; ---------------------------------------------------------------------------------------------
 ;  Settings (MCM; first defaults come from settings.json written by the installer)

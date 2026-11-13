@@ -2,9 +2,9 @@
 
 # O'Blood, Dirt and Cum
 
-**v0.2** · By **That Guy (Coronerra)** · Skyrim Special Edition · ESL-flagged plugin · Adults only
+**v0.3** · By **That Guy (Coronerra)** · Skyrim Special Edition · ESL-flagged plugin · Adults only
 
-**[Download v0.2](https://github.com/Coronerra/OBlood-Dirt-and-Cum/releases/tag/v0.2)** (`OBlood_Dirt_and_Cum_0.2.zip`) · [Changelog](CHANGELOG.md) · [Earlier v0.1](https://github.com/Coronerra/OBlood-Dirt-and-Cum/releases/tag/v0.1) · License: [MIT for coronerra's work](LICENSE)
+**[Download v0.3](https://github.com/Coronerra/OBlood-Dirt-and-Cum/releases/tag/v0.3)** (`OBlood_Dirt_and_Cum_0.3.zip`) · [Changelog](CHANGELOG.md) · [Earlier v0.2](https://github.com/Coronerra/OBlood-Dirt-and-Cum/releases/tag/v0.2) · [v0.1](https://github.com/Coronerra/OBlood-Dirt-and-Cum/releases/tag/v0.1) · License: [MIT for coronerra's work](LICENSE)
 
 A small, standalone **SkyrimNet companion for [Dirt and Blood - Dynamic Visuals](https://www.nexusmods.com/skyrimspecialedition/mods/38886) and/or OCum**. Since 0.2, **Dirt and Blood and OCum are each optional**: the mod looks for both when the game loads and does what it can with what it finds. You need **at least one** of them for it to do anything.
 
@@ -12,12 +12,12 @@ A small, standalone **SkyrimNet companion for [Dirt and Blood - Dynamic Visuals]
 |---|---|
 | **Dirt and Blood + OCum** | Everything: dirt, blood and cum facts in SkyrimNet bios, state and bath events, bath memories, WashUp for followers, and a real Dirt and Blood bath washes OCum's cum off (section 6). |
 | **Dirt and Blood only** | The Dirt and Blood companion: dirt and blood facts, state and bath events, bath memories, WashUp. Every OCum part stays silent. |
-| **OCum only** | An OCum to SkyrimNet link: NPCs (and you) are told who "has cum on them". No Papyrus runs for it at all; the bio prompt reads OCum directly. No WashUp, no dirt or blood, no bath wash-off. |
+| **OCum only** | An OCum to SkyrimNet link: NPCs (and you) are told who "has cum on them" (or, with OStimNet, OStimNet's own detailed description is used; see [OStimNet](#ostimnet-works-alongside-it)). No Papyrus runs for it at all; the bio prompt reads OCum directly. No WashUp, no dirt or blood, no bath wash-off. |
 | **Neither** | Nothing. The plugin loads safely and the MCM says both are missing. |
 
 When Dirt and Blood is installed this is a companion for it, **not a replacement**: Dirt and Blood still does all the dirt, blood and bathing; this mod tells SkyrimNet about it.
 
-This is a test build (0.2). It compiles, and the plugin and installer were checked, but it has not been played in game yet. Please report problems on [GitHub Issues](https://github.com/Coronerra/OBlood-Dirt-and-Cum/issues) with your Papyrus log (lines start with `[OBDC]`).
+This is a test build (0.3). It compiles, and the plugin and installer were checked, but it has not been played in game yet. Please report problems on [GitHub Issues](https://github.com/Coronerra/OBlood-Dirt-and-Cum/issues) with your Papyrus log (lines start with `[OBDC]`).
 
 ## Contents
 1. [What it does](#1-what-it-does)
@@ -33,12 +33,20 @@ This is a test build (0.2). It compiles, and the plugin and installer were check
 11. [Credits and permissions](#11-credits-and-permissions)
 
 ## 1. What it does
-- **Hygiene in character bios.** The prompt `0172_obdc_hygiene.prompt` (a SkyrimNet `character_bio` submodule) states plain facts, such as "Lydia is bloodstained and very dirty.", "Lydia has cum on them." or "You are washing right now." It never tells anyone how to react; their personality decides that.
+- **Hygiene in character bios.** The prompt `0172_obdc_hygiene.prompt` (a SkyrimNet `character_bio` submodule) states plain facts under `## Hygiene`, such as "Lydia is bloodstained and very dirty." or "You are washing right now." A separate submodule, `0402_obdc_cum_covering.prompt`, adds "Lydia has cum on them." under `### Cum covering` when needed (see [OStimNet](#ostimnet-works-alongside-it)). Neither tells anyone how to react; their personality decides that.
   - It stays quiet for Clean and Dirt1 (lightly dusty is normal in Skyrim).
   - NPC dirt and blood only appear while the matching Dirt and Blood option is on (NPCs get bloody, bandit dirt, profession dirt). If you turned those off in Dirt and Blood's MCM, NPCs show nothing.
   - The dirt and blood facts appear only with Dirt and Blood installed.
-  - The cum fact appears only with OCum installed (with or without Dirt and Blood), while OCum itself marks the character (its `OCum_HasCumFaction` or its cum effect). It goes away when OCum's own timer cleans them, when they swim (OCum's own water clean) or when they bathe (this mod). Without OCum it is completely silent.
+  - The cum fact appears only with OCum installed (with or without Dirt and Blood), only when OStimNet is not already describing it, and only while OCum itself marks the character (its `OCum_HasCumFaction` or its cum effect). It goes away when OCum's own timer cleans them, when they swim (OCum's own water clean) or when they bathe (this mod). Without OCum it is completely silent.
   - There is no header at all when there is nothing to say. Characters read about themselves in the second person and about others in the third person.
+
+### OStimNet works alongside it
+[OStimNet](https://github.com/tetherball88/OStimNet) by tetherball88 already has its own OCum prompts: a `### Cum covering` section in character bios with detailed sentences read from OCum's RaceMenu overlays (its `ocum_description` decorator), and a final instruction telling NPCs how to notice anyone with a `### Cum covering` section. This mod does not change OStimNet in any way; it works around it so the two never contradict each other:
+- **OStimNet has a description** for the character: this mod prints **no cum line at all**. OStimNet's details stand.
+- **OStimNet's description is empty** (or OStimNet is not installed) **but OCum still marks the character** (for example Tull / Liquid Pack / werewolf-shot meshes, or the character's 3D is not loaded so overlays cannot be read): this mod prints one short fact, "You have cum on you." / "<name> has cum on them.", under the **same heading, `### Cum covering`**, so OStimNet's reaction rule still applies. No body-part detail is invented.
+- This mod adds **no reaction instructions** of its own. It stays facts-only.
+- OStimNet is detected by its plugin `TT_OStimNet.esp`; OStimNet's decorator is only called when that plugin is loaded, so nothing breaks without OStimNet. The heading is the same with or without OStimNet.
+
 - **State events** (Dirt and Blood). When your Dirt and Blood state changes (blood from a hit, dirt over time, rain, a swim), SkyrimNet gets a short-lived event, for example "<your name> is now covered in blood."
 - **Narration, only for big moments** (Dirt and Blood). One narration line when a fight leaves you covered or soaked in blood (sent after the fight ends), and one when you finish a bath. At most one every 2 minutes.
 - **Bath memories** (Dirt and Blood). When a bath ends, the bather remembers it ("... washed off the dirt, blood and cum." if cum was washed off). Up to 3 adult NPCs who can see the bath also remember it (no forced dialogue, no extra LLM call).
@@ -68,6 +76,7 @@ Each optional, detected automatically when the game loads (never masters, no ins
 - **OCum / OCum Ascended 4.1.1** (`OCum.esp`). Enables the cum fact, and with Dirt and Blood also the bath wash-off.
 
 Other optional mods:
+- **OStimNet** (tetherball88, `TT_OStimNet.esp`): complementary. If it is installed, its detailed OCum description takes priority and this mod only fills gaps (section 1).
 - **Tull Animated Creampie** and **[Predator] Liquid Pack v2**, as used by the OCum Ascended Tull and Liquid Pack add-on and by the OCum Werewolf Shot / OStim Beast Form mesh loads. Their items are taken off in the bath as a backup (section 6).
 - **Malignis Animations** (https://www.nexusmods.com/skyrimspecialedition/mods/166293) with its Dirt and Blood patch. If you use it, tick the installer option (section 3).
 - **WadeInWater**: standing in its water counts as water for WashUp, the same as in Dirt and Blood.
@@ -92,7 +101,7 @@ MCM page **O'Blood, Dirt and Cum**. The Status block shows Dirt and Blood found 
   - **WashUp action (followers)** (on). Its own switch, separate from Dirt and Blood's own "NPCs bathe" option.
   - **Malignis Animations installed** (from the installer). Only changes log text.
 - OCum:
-  - **Cum in character bios** (on; needs OCum). Global `OBDC_CumPromptEnabled`.
+  - **Cum in character bios** (on; needs OCum). Global `OBDC_CumPromptEnabled`. Toggles only this mod's short fact; when OStimNet already describes the cum, there is nothing extra to print anyway.
   - **Baths wash cum off** (on; needs Dirt and Blood and OCum).
   - **Narrate the cum in the bath** (on; needs Dirt and Blood and OCum).
 - **Debug notifications** (off).
@@ -144,7 +153,8 @@ All four need Dirt and Blood (`OBDC_CumWashed` needs OCum too). In OCum-only mod
 - `OBDC_CumWashed`: `Event X(Form akActor)`. OCum's cum was washed off in a bath.
 
 ## 8. Known limits
-- **Not tested in game yet** (0.2).
+- **Not tested in game yet** (0.3).
+- **OStimNet detection** uses `TT_OStimNet.esp`. If that plugin is active but OStimNet's SKSE DLL failed to load, OStimNet's own 0401 prompt breaks the same way; this mod's cum fact is in its own submodule, so the dirt and blood facts are not affected.
 - **Dirt and Blood is found by its plugin file** `Dirt and Blood - Dynamic Visuals.esp` (also the Nolvus file name). A renamed or merged copy is not found.
 - **OCum-only cum fact** relies on OCum's own markers (`OCum_HasCumFaction` or its cum effect); if OCum's decals are turned off in OCum, it may not mark anyone.
 - **NPC dirt and blood visuals do not change after a bath.** This is Dirt and Blood's design: NPC blood follows health and NPC dirt follows class or faction.
@@ -163,8 +173,8 @@ Turn off the MCM toggles, save, disable the plugin and remove the mod. The scrip
 - `Data/`: exactly what the release zip installs (`00 Core`, `01 Malignis Flag`, `fomod`).
 - `src/`: Papyrus sources (`OBDC_Main`, `OBDC_PlayerAlias`, `OBDC_MCM`, and `OBDC_OCum`, the only script that names OCum's and RaceMenu's types; it is only called after `OCum.esp` is confirmed loaded).
 - `tools/`: `compile.sh` (Caprica, Skyrim flags), `mkesp.py` (writes the plugin), `verify.py` (parses it back), `scrub.py` (strips build paths from .pex), `mkzip.py` (the release zip), and compile-only stubs in `tools/stubs/` (never shipped).
-- Plugin: `OBlood_Dirt_and_Cum.esp`, ESL, master `Skyrim.esm` only: quests `OBDC_Quest` and `OBDC_MCMQuest`, globals `OBDC_WashUpEnabled`, `OBDC_PromptEnabled`, `OBDC_CumPromptEnabled`, and (0.2) `OBDC_DnBFound`.
-- SkyrimNet pack: `SKSE/Plugins/SkyrimNet/external/coronerra.oblood_dirt_and_cum/` (manifest, `prompts/submodules/character_bio/0172_obdc_hygiene.prompt`, `actions/washup.yaml`).
+- Plugin: `OBlood_Dirt_and_Cum.esp`, ESL, master `Skyrim.esm` only: quests `OBDC_Quest` and `OBDC_MCMQuest`, globals `OBDC_WashUpEnabled`, `OBDC_PromptEnabled`, `OBDC_CumPromptEnabled`, and (0.2) `OBDC_DnBFound`. No new records in 0.3.
+- SkyrimNet pack: `SKSE/Plugins/SkyrimNet/external/coronerra.oblood_dirt_and_cum/` (manifest, `prompts/submodules/character_bio/0172_obdc_hygiene.prompt`, `prompts/submodules/character_bio/0402_obdc_cum_covering.prompt`, `actions/washup.yaml`).
 
 ## 11. Credits and permissions
 - **That Guy (Coronerra)**: this mod.
@@ -172,6 +182,7 @@ Turn off the MCM toggles, save, disable the plugin and remove the mod. The scrip
 - **OCum / OCum Ascended** and its authors: optional, detected at run time. Nothing of it is included.
 - **Tullius** (Tull Animated Creampie), **Predator** ([Predator] Liquid Pack), and **DwemerMods** (OCum Ascended - Tull and Liquid Pack Meshes): optional; only their item IDs are referenced. Nothing of them is included.
 - **Malignis** (Malignis Animations): optional. Nothing of it is included.
+- **tetherball88** (OStimNet): complementary, optional, detected at run time. This mod defers to OStimNet's OCum description and reuses its `### Cum covering` heading. Nothing of OStimNet is included or changed.
 - The **SkyrimNet** team, **powerofthree** (Papyrus Extender), the **PapyrusUtil** authors, **expired6978** (RaceMenu / NiOverride), and the **SkyUI** team.
 - The idea of a facts-only hygiene prompt and onlooker memories was inspired by Telord's Bathing in Skyrim SN-SA plugins. No code or files from that mod are included.
 
@@ -180,6 +191,14 @@ No assets from other mods are included. coronerra's work is MIT (see [LICENSE](L
 ---
 
 # Changelog
+
+## 0.3
+- **Works around OStimNet's OCum prompts** (OStimNet itself is not changed). The cum fact moved out of `## Hygiene` into its own submodule, `0402_obdc_cum_covering.prompt`:
+  - If OStimNet (`TT_OStimNet.esp`) is loaded and its `ocum_description` has text for the character, this mod prints nothing; OStimNet's details stand.
+  - If that description is empty, or OStimNet is not installed, but OCum still marks the character (faction or effect: meshes, 3D not loaded, and so on), this mod prints "You have cum on you." / "<name> has cum on them." under `### Cum covering`, the same heading OStimNet uses, so OStimNet's reaction rule still applies.
+  - OStimNet's decorator is only called when `TT_OStimNet.esp` is loaded. No reaction instructions added; still facts-only.
+- `0172_obdc_hygiene.prompt` now holds only dirt, blood and washing.
+- Version strings 0.3 (MCM, plugin description, manifest, FOMOD). No new plugin records; update in place from 0.1 or 0.2.
 
 ## 0.2
 - Dirt and Blood and OCum are now **each optional**, detected when the game loads. At least one is needed.

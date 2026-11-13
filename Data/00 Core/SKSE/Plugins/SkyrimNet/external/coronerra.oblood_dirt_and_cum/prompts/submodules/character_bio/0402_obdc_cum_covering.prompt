@@ -1,0 +1,30 @@
+{# O'Blood, Dirt and Cum v0.3 (That Guy / Coronerra). OCum "has cum on them" fact, facts only; never tells anyone how to react.
+   Works around OStimNet (tetherball88), which is NOT changed:
+   - OStimNet's 0401_tton_ocum_details.prompt prints "### Cum covering" plus ocum_description(actorUUID), detailed text read from OCum's RaceMenu overlays,
+     and its 0501_cum_overlay.prompt tells NPCs how to notice a "### Cum covering" section.
+   - If OStimNet (TT_OStimNet.esp) is loaded and ocum_description(actorUUID) is not empty, this prints NOTHING: their details stand.
+   - Otherwise, if OCum still marks the actor (OCum_HasCumFaction or OCumMagicEffect: e.g. Tull / Liquid Pack / werewolf-shot meshes,
+     overlays not readable because the 3D is not loaded), this prints a short fact under the same "### Cum covering" heading, so OStimNet's rule
+     still applies. No body-part detail is invented. Without OStimNet the same short fact is printed under the same heading.
+   - ocum_description is only called when TT_OStimNet.esp is loaded (the plugin OStimNet ships with the SKSE DLL that registers the decorator),
+     and only when this would otherwise print, so it is never called without OStimNet.
+   Silent when: OCum.esp is not loaded, OBDC_PromptEnabled or OBDC_CumPromptEnabled is off, or OCum does not mark the actor. #}
+{% if render_mode == "full" or render_mode == "thoughts" or render_mode == "dialogue_target" %}
+{% if get_global_value("OBDC_PromptEnabled") == 1 and get_global_value("OBDC_CumPromptEnabled") == 1 and is_plugin_loaded(lower("OCum.esp")) %}
+{% if actorUUID and actorUUID != 0 %}
+{% if is_in_faction(actorUUID, "OCum_HasCumFaction") or has_magic_effect(actorUUID, "OCumMagicEffect") %}
+{% set obdc_osn = "" %}
+{% if is_plugin_loaded(lower("TT_OStimNet.esp")) %}{% set obdc_osn = ocum_description(actorUUID) %}{% endif %}
+{% if obdc_osn == "" %}
+{% set obdc_actor = decnpc(actorUUID) %}
+{% if obdc_actor and obdc_actor.UUID %}
+### Cum covering
+{% if (not is_player(actorUUID)) and (render_mode == "full" or render_mode == "thoughts") %}You have cum on you.
+{% else %}{{ obdc_actor.name }} has cum on them.
+{% endif %}
+{% endif %}
+{% endif %}
+{% endif %}
+{% endif %}
+{% endif %}
+{% endif %}

@@ -3,7 +3,7 @@
     "type": "bundle",
     "title": "O'Blood, Dirt and Cum",
     "tagline": "SkyrimNet knows when someone is dirty, bloody or bathing (Dirt and Blood) and when someone has cum on them (OCum). Each is optional; with both, a bath washes the cum off.",
-    "description": "SkyrimNet companion for Dirt and Blood - Dynamic Visuals and/or OCum. Each is optional and detected at run time; at least one is needed. With Dirt and Blood: a character_bio prompt states plain facts about dirt and blood, plus state events, bath memories and a WashUp action that follows Dirt and Blood's soap and water rules (a companion, not a replacement). With OCum: the same prompt tells SkyrimNet who has cum on them. With both: any real Dirt and Blood bath also washes OCum's cum off. By That Guy (Coronerra).",
+    "description": "SkyrimNet companion for Dirt and Blood - Dynamic Visuals and/or OCum. Each is optional and detected at run time; at least one is needed. With Dirt and Blood: a character_bio prompt states plain facts about dirt and blood, plus state events, bath memories and a WashUp action that follows Dirt and Blood's soap and water rules (a companion, not a replacement). With OCum: a short \"### Cum covering\" fact tells SkyrimNet who has cum on them, only when OStimNet's own OCum description has nothing to say. With both: any real Dirt and Blood bath also washes OCum's cum off. By That Guy (Coronerra).",
     "author": "That Guy (Coronerra)",
     "tags": [
         "Action",
@@ -11,7 +11,7 @@
     ],
     "nsfw": true,
     "icon": "scroll",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "min_skyrimnet_version": "0.28.0",
     "mods": [
         {

@@ -17,7 +17,7 @@ int oDbg
 int oReload
 
 int Function GetVersion()
-	return 2
+	return 3
 EndFunction
 
 Event OnConfigInit()
@@ -42,7 +42,7 @@ Event OnPageReset(string a_page)
 	EndIf
 	SetCursorFillMode(TOP_TO_BOTTOM)
 	AddHeaderOption("Status")
-	AddTextOption("Version", "0.2", OPTION_FLAG_DISABLED)
+	AddTextOption("Version", "0.3", OPTION_FLAG_DISABLED)
 	If Main.bDnB
 		AddTextOption("Dirt and Blood", "found", OPTION_FLAG_DISABLED)
 	Else
@@ -147,7 +147,7 @@ Event OnOptionHighlight(int a_option)
 	ElseIf a_option == oCumNarr
 		SetInfoText("Needs Dirt and Blood and OCum. A short SkyrimNet narration just before the cum is washed off. At most one every 30 seconds, only for bathers near you.")
 	ElseIf a_option == oCumPrompt
-		SetInfoText("Adds 'has cum on them' to SkyrimNet character bios while OCum marks someone. Works with or without Dirt and Blood. Gone when OCum's own timer, a swim or a bath cleans it. Personality decides the reaction.")
+		SetInfoText("Adds 'has cum on them' to SkyrimNet character bios while OCum marks someone. Works with or without Dirt and Blood. If OStimNet is installed and already describes the cum, its details take priority and this adds nothing. Gone when OCum's own timer, a swim or a bath cleans it. Personality decides the reaction.")
 	ElseIf a_option == oMal
 		SetInfoText("Set by the installer. Only changes the log text (a woman's bath runs about 65 s). Bath ends are always detected the same way.")
 	ElseIf a_option == oReload
