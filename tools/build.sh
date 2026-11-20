@@ -2,7 +2,7 @@
 # Build O'Blood, Dirt and Cum: compile, write the plugin, fill Data/00 Core, make the release zip.
 set -e
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-VER=0.3
+VER=0.5.2
 cd "$ROOT"
 tools/compile.sh
 python3 tools/mkesp.py build/OBlood_Dirt_and_Cum.esp
@@ -13,7 +13,8 @@ cp build/Scripts/*.pex "$CORE/Scripts/"
 cp src/*.psc "$CORE/Scripts/Source/"
 cp build/OBlood_Dirt_and_Cum.esp "$CORE/"
 { cat README.md; echo; echo "---"; echo; cat CHANGELOG.md; } > "$CORE/OBlood_Dirt_and_Cum_README.md"
-mkdir -p dist
-rm -f "dist/OBlood_Dirt_and_Cum_$VER.zip"
+mkdir -p dist out
+rm -f "dist/OBlood_Dirt_and_Cum_$VER.zip" "out/OBlood_Dirt_and_Cum_$VER.zip"
 python3 tools/mkzip.py "dist/OBlood_Dirt_and_Cum_$VER.zip" Data fomod "00 Core" "01 Malignis Flag"
-md5sum "dist/OBlood_Dirt_and_Cum_$VER.zip"; stat -c '%s bytes' "dist/OBlood_Dirt_and_Cum_$VER.zip"
+cp -f "dist/OBlood_Dirt_and_Cum_$VER.zip" "out/OBlood_Dirt_and_Cum_$VER.zip"
+md5sum "out/OBlood_Dirt_and_Cum_$VER.zip"; stat -c '%s bytes' "out/OBlood_Dirt_and_Cum_$VER.zip"

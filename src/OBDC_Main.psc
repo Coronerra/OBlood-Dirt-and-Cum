@@ -1,5 +1,5 @@
 Scriptname OBDC_Main extends Quest
-{O'Blood, Dirt and Cum v0.3. A SkyrimNet companion for Dirt and Blood and/or OCum, by That Guy (Coronerra).
+{O'Blood, Dirt and Cum v0.5. A SkyrimNet companion for Dirt and Blood and/or OCum, by That Guy (Coronerra).
  Both are optional and found at run time; at least one is needed for the mod to do anything:
    Dirt and Blood only: hygiene facts, state and bath events, bath memories, WashUp.
    OCum only: nothing runs in Papyrus; the hygiene prompt tells SkyrimNet who has cum on them.
@@ -16,6 +16,19 @@ GlobalVariable Property OBDC_WashUpEnabled Auto       ; read by the WashUp actio
 GlobalVariable Property OBDC_PromptEnabled Auto       ; read by the hygiene prompt
 GlobalVariable Property OBDC_CumPromptEnabled Auto    ; read by the hygiene prompt (cum fact)
 GlobalVariable Property OBDC_DnBFound Auto            ; 1 while Dirt and Blood is found; read by the WashUp action's eligibility rule (0.2)
+GlobalVariable Property OBDC_NormBathing Auto         ; 0.5: 1 = open/communal bathing is ordinary (prompt)
+GlobalVariable Property OBDC_NormBathingSex Auto      ; 0.5: 1 = intimacy in bathing spots is ordinary (prompt)
+GlobalVariable Property OBDC_NearbyWater Auto         ; 0.5: 0 none, 1 open water, 2 pool/tub nearby (prompt)
+GlobalVariable Property OBDC_AllNPCsWashUp Auto       ; 0.5: 1 = nearby non-followers may WashUp
+Quest Property TravelQuest Auto                       ; 0.5: OBDC_TravelQuest (travel aliases + packages)
+ReferenceAlias Property TravelActor0 Auto
+ReferenceAlias Property TravelDest0 Auto
+ReferenceAlias Property TravelActor1 Auto
+ReferenceAlias Property TravelDest1 Auto
+ReferenceAlias Property TravelActor2 Auto
+ReferenceAlias Property TravelDest2 Auto
+ReferenceAlias Property TravelActor3 Auto
+ReferenceAlias Property TravelDest3 Auto
 Keyword Property ActorTypeNPC Auto
 
 string Property DNB_ESP = "Dirt and Blood - Dynamic Visuals.esp" AutoReadOnly
@@ -34,7 +47,7 @@ float Property CUM_NARRATION_RANGE = 4096.0 AutoReadOnly
 float Property WITNESS_RADIUS = 1500.0 AutoReadOnly
 int Property WITNESS_MAX = 3 AutoReadOnly
 int Property WASHUP_COOLDOWN = 30 AutoReadOnly
-int Property VERSION = 3 AutoReadOnly                ; 0.3
+int Property VERSION = 5 AutoReadOnly                ; 0.5
 
 ; ---------------------------------------------------------------------------------------------
 ;  Settings (MCM; first defaults come from settings.json written by the installer)
@@ -47,6 +60,11 @@ bool Property bMalignis = false Auto Hidden
 bool Property bCumWash = true Auto Hidden
 bool Property bCumNarration = true Auto Hidden
 bool Property bDebug = false Auto Hidden
+bool Property bWalkToWater = true Auto Hidden         ; 0.5: find real water and walk to it
+float Property fWaterSearchRadius = 2000.0 Auto Hidden ; 0.5: MCM 500-3500
+float Property WALK_TIMEOUT = 24.0 AutoReadOnly
+float Property WALK_ARRIVE = 80.0 AutoReadOnly
+float Property WALK_ARRIVE_TUB = 150.0 AutoReadOnly
 bool bSettingsRead = false
 
 ; ---------------------------------------------------------------------------------------------
@@ -100,6 +118,25 @@ float[] cumCleanAt
 Actor[] staleActor            ; still listed by Dirt and Blood long after their bath; not followed again
 int nBaths = 0
 
+; 0.5 walk-to-water: only while an NPC is actually walking (no idle polling)
+ObjectReference kProbe
+ObjectReference[] kDest
+Actor[] walkActor
+float[] walkWait
+bool[] walkTub
+float[] walkTubX
+float[] walkTubY
+float[] walkTubZ
+float[] walkLastX
+float[] walkLastY
+float[] walkLastZ
+int[] walkStall
+int[] walkRetries
+int nWalks = 0
+Cell kLastWaterCell
+ReferenceAlias[] kWalkActorAlias
+ReferenceAlias[] kWalkDestAlias
+
 ; =============================================================================================
 ;  Start-up
 ; =============================================================================================
@@ -110,6 +147,7 @@ Event OnInit()
 EndEvent
 
 Function Startup()
+	LogSessionStart()      ; 0.4: OBloodDirtCum.log, new section per game load
 	ReadSettings(false)
 	Resolve()
 	bathActor = new Actor[4]
@@ -135,7 +173,12 @@ Function Startup()
 	EndIf
 	SetDnBFound()
 	ApplyWashUpToggle()
+	If bDnB
+		EnsureTravel()
+	EndIf
+	UpdateNearbyWater(true)
 	Log("started (" + ModeName() + "). Dirt and Blood " + bDnB + ", OCum " + bOCum + " (" + nMeshItems + " mesh items), Malignis flag " + bMalignis + ", Malignis plugin " + bMalignisLoaded + ", player tier " + TierName(iLastTier))
+	LogStartup()
 EndFunction
 
 Function ReadSettings(bool abForce)
@@ -158,6 +201,22 @@ Function ReadSettings(bool abForce)
 	EndIf
 	If OBDC_CumPromptEnabled
 		OBDC_CumPromptEnabled.SetValue(JsonUtil.GetIntValue(SETTINGS_FILE, "cum_prompt", 1) as float)
+	EndIf
+	bWalkToWater = JsonUtil.GetIntValue(SETTINGS_FILE, "walk_to_water", 1) == 1
+	fWaterSearchRadius = JsonUtil.GetIntValue(SETTINGS_FILE, "water_search_radius", 2000) as float
+	If fWaterSearchRadius < 500.0
+		fWaterSearchRadius = 500.0
+	ElseIf fWaterSearchRadius > 3500.0
+		fWaterSearchRadius = 3500.0
+	EndIf
+	If OBDC_NormBathing
+		OBDC_NormBathing.SetValue(JsonUtil.GetIntValue(SETTINGS_FILE, "norm_bathing", 1) as float)
+	EndIf
+	If OBDC_NormBathingSex
+		OBDC_NormBathingSex.SetValue(JsonUtil.GetIntValue(SETTINGS_FILE, "norm_bathing_sex", 1) as float)
+	EndIf
+	If OBDC_AllNPCsWashUp
+		OBDC_AllNPCsWashUp.SetValue(JsonUtil.GetIntValue(SETTINGS_FILE, "all_npcs_washup", 1) as float)
 	EndIf
 EndFunction
 
@@ -502,7 +561,7 @@ Function ScanBathers()
 EndFunction
 
 Function Schedule()
-	If nBaths > 0
+	If nBaths > 0 || nWalks > 0
 		RegisterForSingleUpdate(POLL)
 	ElseIf iScanLeft > 0
 		RegisterForSingleUpdate(SCAN_STEP)
@@ -513,6 +572,9 @@ EndFunction
 
 Event OnUpdate()
 	float step = 5.0
+	If nWalks > 0
+		TickWalks()
+	EndIf
 	If nBaths > 0
 		step = POLL
 		int i = 0
@@ -718,9 +780,11 @@ Function CumNarration(Actor a)
 	EndIf
 	float now = Utility.GetCurrentRealTime()
 	If now - fLastCumNarr < CUM_NARRATION_GAP && now >= fLastCumNarr
+		Log("cum narration skipped for " + a.GetDisplayName() + ": another one less than 30 s ago")
 		return
 	EndIf
 	If a != PlayerRef && (!a.Is3DLoaded() || a.GetDistance(PlayerRef) > CUM_NARRATION_RANGE)
+		Log("cum narration skipped for " + a.GetDisplayName() + ": too far from you")
 		return
 	EndIf
 	fLastCumNarr = now
@@ -803,7 +867,659 @@ Function RemoveMeshItems(Actor a)
 EndFunction
 
 ; =============================================================================================
-;  WashUp action (followers)
+;  0.5: travel markers, real-water search, walk-to-bathe
+; =============================================================================================
+Function EnsureTravel()
+	If kDest.length != 4
+		kDest = new ObjectReference[4]
+		walkActor = new Actor[4]
+		walkWait = new float[4]
+		walkTub = new bool[4]
+		walkTubX = new float[4]
+		walkTubY = new float[4]
+		walkTubZ = new float[4]
+		kWalkActorAlias = new ReferenceAlias[4]
+		kWalkDestAlias = new ReferenceAlias[4]
+		kWalkActorAlias[0] = TravelActor0
+		kWalkDestAlias[0] = TravelDest0
+		kWalkActorAlias[1] = TravelActor1
+		kWalkDestAlias[1] = TravelDest1
+		kWalkActorAlias[2] = TravelActor2
+		kWalkDestAlias[2] = TravelDest2
+		kWalkActorAlias[3] = TravelActor3
+		kWalkDestAlias[3] = TravelDest3
+	EndIf
+	Form xm = Game.GetFormFromFile(0x3B, "Skyrim.esm")
+	If !xm
+		Log("walk-to-water: vanilla XMarker 0x3B was not found")
+		return
+	EndIf
+	If walkLastX.length != 4
+		walkLastX = new float[4]
+		walkLastY = new float[4]
+		walkLastZ = new float[4]
+		walkStall = new int[4]
+		walkRetries = new int[4]
+	EndIf
+	If !kProbe
+		kProbe = PlayerRef.PlaceAtMe(xm, 1, true, false)
+	ElseIf kProbe.IsDisabled()
+		kProbe.EnableNoWait()
+	EndIf
+	int i = 0
+	While i < 4
+		If !kDest[i]
+			kDest[i] = PlayerRef.PlaceAtMe(xm, 1, true, true)
+		EndIf
+		If kDest[i]
+			If kDest[i].IsDisabled()
+				kDest[i].EnableNoWait()
+			EndIf
+			If kWalkDestAlias[i]
+				kWalkDestAlias[i].ForceRefTo(kDest[i])
+			EndIf
+		EndIf
+		i += 1
+	EndWhile
+	If TravelQuest && !TravelQuest.IsRunning()
+		TravelQuest.Start()
+	EndIf
+EndFunction
+
+Function ApplyWalkToWater()
+	If !bWalkToWater
+		AbortAllWalks("Walk to nearby water was turned off.")
+		SetNearbyWater(0)
+		kLastWaterCell = None
+	Else
+		UpdateNearbyWater(true)
+	EndIf
+EndFunction
+
+Function SetNearbyWater(int aiVal)
+	If OBDC_NearbyWater
+		OBDC_NearbyWater.SetValue(aiVal as float)
+	EndIf
+EndFunction
+
+; One-shot: on load, location change, or a new player cell. Never on a timer.
+Function UpdateNearbyWater(bool abForce = false)
+	If !bDnB || !bWalkToWater
+		SetNearbyWater(0)
+		kLastWaterCell = None
+		return
+	EndIf
+	Cell c = PlayerRef.GetParentCell()
+	If !abForce && c && c == kLastWaterCell
+		return
+	EndIf
+	kLastWaterCell = c
+	EnsureTravel()
+	If !kProbe
+		SetNearbyWater(0)
+		return
+	EndIf
+	int kind = 0
+	If HasWater(PlayerRef)
+		kind = 1
+	EndIf
+	; Prefer a real water activator (tub/pool) when one is in range
+	If FindWaterNear(PlayerRef, true)
+		If iFoundKind == 2
+			kind = 2
+		ElseIf kind == 0
+			kind = 1
+		EndIf
+	EndIf
+	SetNearbyWater(kind)
+	If bDebug
+		Log("nearby water: " + kind + " (2=pool/tub, 1=open water, 0=none)")
+	EndIf
+EndFunction
+
+; Search outputs (used by FindWaterNear / walk start)
+bool bFoundWater
+int iFoundKind            ; 1 = open water / waterfall, 2 = real tub/pool activator
+float fFoundX
+float fFoundY
+float fFoundZ
+bool bFoundTub
+float fFoundTubX
+float fFoundTubY
+float fFoundTubZ
+
+Function ClearFound()
+	bFoundWater = false
+	iFoundKind = 0
+	bFoundTub = false
+	fFoundX = 0.0
+	fFoundY = 0.0
+	fFoundZ = 0.0
+	fFoundTubX = 0.0
+	fFoundTubY = 0.0
+	fFoundTubZ = 0.0
+EndFunction
+
+Function AcceptFound(int aiKind, float x, float y, float z, bool abTub, float tx, float ty, float tz)
+	bFoundWater = true
+	iFoundKind = aiKind
+	fFoundX = x
+	fFoundY = y
+	fFoundZ = z
+	bFoundTub = abTub
+	fFoundTubX = tx
+	fFoundTubY = ty
+	fFoundTubZ = tz
+EndFunction
+
+bool Function BetterThanFound(ObjectReference a, float x, float y, float z)
+	If !bFoundWater
+		return true
+	EndIf
+	return Dist2(a, x, y, z) < Dist2(a, fFoundX, fFoundY, fFoundZ)
+EndFunction
+
+float Function Dist2(ObjectReference a, float x, float y, float z)
+	float dx = a.GetPositionX() - x
+	float dy = a.GetPositionY() - y
+	float dz = a.GetPositionZ() - z
+	return dx * dx + dy * dy + dz * dz
+EndFunction
+
+Function MoveProbe(float x, float y, float z, ObjectReference akNear)
+	If !kProbe
+		return
+	EndIf
+	If akNear
+		kProbe.MoveTo(akNear)
+	EndIf
+	kProbe.SetPosition(x, y, z)
+EndFunction
+
+bool Function ProbeInWater()
+	return kProbe && PO3_SKSEFunctions.IsRefInWater(kProbe)
+EndFunction
+
+; Depth at a navmesh-snapped point: wet at floor and at +20, not over the head at +95.
+bool Function ProbeWadeable(float x, float y, float z, ObjectReference akNear)
+	MoveProbe(x, y, z, akNear)
+	If !ProbeInWater()
+		return false
+	EndIf
+	MoveProbe(x, y, z + 20.0, akNear)
+	If !ProbeInWater()
+		return false
+	EndIf
+	MoveProbe(x, y, z + 95.0, akNear)
+	If ProbeInWater()
+		return false
+	EndIf
+	return true
+EndFunction
+
+; abActivatorsOnly: used by the nearby-water cell check when we only need to know if a tub/pool exists.
+; Returns true and fills the Found* values with the closest valid target.
+bool Function FindWaterNear(Actor a, bool abKeepOutdoor = true)
+	ClearFound()
+	If !a || !kProbe
+		return false
+	EndIf
+	float radius = fWaterSearchRadius
+	If radius < 500.0
+		radius = 500.0
+	ElseIf radius > 3500.0
+		radius = 3500.0
+	EndIf
+	int tests = 0
+
+	; 1. Real water activators (form type 24). Fake decorative water is usually a static and never appears here.
+	ObjectReference[] acts = PO3_SKSEFunctions.FindAllReferencesOfFormType(a, 24, radius)
+	If acts
+		int n = acts.Length
+		int i = 0
+		While i < n && tests < 48
+			ObjectReference act = acts[i]
+			If act && act != kProbe
+				float ax = act.GetPositionX()
+				float ay = act.GetPositionY()
+				float az = act.GetPositionZ()
+				If Dist2(a, ax, ay, az) <= radius * radius
+					; Real engine water only: probe just under the activator surface
+					MoveProbe(ax, ay, az - 12.0, act)
+					If ProbeInWater()
+						tests += 1
+						kProbe.SetPosition(ax, ay, az)
+						PO3_SKSEFunctions.MoveToNearestNavmeshLocation(kProbe)
+						float nx = kProbe.GetPositionX()
+						float ny = kProbe.GetPositionY()
+						float nz = kProbe.GetPositionZ()
+						If ProbeWadeable(nx, ny, nz, act)
+							If BetterThanFound(a, nx, ny, nz)
+								AcceptFound(2, nx, ny, nz, false, 0.0, 0.0, 0.0)
+							EndIf
+						Else
+							; Rimmed tub: the basin is real water, but the navmesh stops at the rim.
+							float rx = ax - nx
+							float ry = ay - ny
+							float rz = az - nz
+							If (rx * rx + ry * ry + rz * rz) <= 40000.0    ; 200 units
+								MoveProbe(ax, ay, az - 12.0, act)
+								If ProbeInWater() && BetterThanFound(a, nx, ny, nz)
+									float stepZ = nz
+									If stepZ < az - 40.0
+										stepZ = az - 20.0
+									EndIf
+									AcceptFound(2, nx, ny, nz, true, ax, ay, stepZ)
+								EndIf
+							EndIf
+						EndIf
+					Else
+						tests += 1
+					EndIf
+				EndIf
+			EndIf
+			i += 1
+		EndWhile
+	EndIf
+
+	; 2. Real cell water (sunken indoor pools, rivers, lakes): tight inner rings first, stops after first wet ring
+	If abKeepOutdoor
+		Cell pc = a.GetParentCell()
+		bool isInt = pc && pc.IsInterior()
+		int cellKind = 1
+		If isInt
+			cellKind = 2
+		EndIf
+		float ax = a.GetPositionX()
+		float ay = a.GetPositionY()
+		float az = a.GetPositionZ()
+		float[] ux = new float[8]
+		float[] uy = new float[8]
+		ux[0] = 1.0
+		uy[0] = 0.0
+		ux[1] = 0.707107
+		uy[1] = 0.707107
+		ux[2] = 0.0
+		uy[2] = 1.0
+		ux[3] = -0.707107
+		uy[3] = 0.707107
+		ux[4] = -1.0
+		uy[4] = 0.0
+		ux[5] = -0.707107
+		uy[5] = -0.707107
+		ux[6] = 0.0
+		uy[6] = -1.0
+		ux[7] = 0.707107
+		uy[7] = -0.707107
+		float[] rings = new float[5]
+		rings[0] = 150.0
+		rings[1] = 320.0
+		rings[2] = 650.0
+		rings[3] = 1150.0
+		rings[4] = 1750.0
+		int ri = 0
+		bool foundCell = false
+		While ri < 5 && !foundCell
+			float rad = rings[ri]
+			If rad <= radius
+				int d = 0
+				While d < 8
+					float px = ax + ux[d] * rad
+					float py = ay + uy[d] * rad
+					MoveProbe(px, py, az, a)
+					PO3_SKSEFunctions.MoveToNearestNavmeshLocation(kProbe)
+					float nx = kProbe.GetPositionX()
+					float ny = kProbe.GetPositionY()
+					float nz = kProbe.GetPositionZ()
+					If ProbeWadeable(nx, ny, nz, a)
+						foundCell = true
+						If BetterThanFound(a, nx, ny, nz)
+							AcceptFound(cellKind, nx, ny, nz, false, 0.0, 0.0, 0.0)
+						EndIf
+					ElseIf isInt
+						; Sunken indoor pool without navmesh inside the basin: check just below floor level
+						float sdx = px - nx
+						float sdy = py - ny
+						If (sdx * sdx + sdy * sdy) <= 48400.0
+							MoveProbe(px, py, az - 45.0, a)
+							If ProbeInWater()
+								MoveProbe(px, py, az + 30.0, a)
+								If !ProbeInWater()
+									foundCell = true
+									If BetterThanFound(a, nx, ny, nz)
+										AcceptFound(2, nx, ny, nz, true, px, py, az - 45.0)
+									EndIf
+								EndIf
+							EndIf
+						EndIf
+					EndIf
+					d += 1
+				EndWhile
+			EndIf
+			ri += 1
+		EndWhile
+	EndIf
+
+	; 3. Dirt and Blood waterfall lists: only as fallback if no real wet pool/tub/cell water was found
+	If !bFoundWater
+		ObjectReference fall = ClosestWaterfall(a, radius)
+		If fall
+			float fx = fall.GetPositionX()
+			float fy = fall.GetPositionY()
+			float fz = fall.GetPositionZ()
+			MoveProbe(fx, fy, fz, fall)
+			PO3_SKSEFunctions.MoveToNearestNavmeshLocation(kProbe)
+			float nx = kProbe.GetPositionX()
+			float ny = kProbe.GetPositionY()
+			float nz = kProbe.GetPositionZ()
+			AcceptFound(1, nx, ny, nz, false, 0.0, 0.0, 0.0)
+		EndIf
+	EndIf
+	return bFoundWater
+EndFunction
+
+ObjectReference Function ClosestWaterfall(Actor a, float afRadius)
+	If !a
+		return None
+	EndIf
+	float x = a.GetPositionX()
+	float y = a.GetPositionY()
+	float z = a.GetPositionZ()
+	ObjectReference best = None
+	float bestD = afRadius
+	ObjectReference r
+	If kFall256
+		r = Game.FindClosestReferenceOfAnyTypeInList(kFall256, x, y, z + 256.0, afRadius)
+		If r && a.GetDistance(r) < bestD
+			best = r
+			bestD = a.GetDistance(r)
+		EndIf
+	EndIf
+	If kFall512
+		r = Game.FindClosestReferenceOfAnyTypeInList(kFall512, x, y, z + 512.0, afRadius)
+		If r && a.GetDistance(r) < bestD
+			best = r
+			bestD = a.GetDistance(r)
+		EndIf
+	EndIf
+	If kFall2048
+		r = Game.FindClosestReferenceOfAnyTypeInList(kFall2048, x, y, z + 2048.0, afRadius)
+		If r && a.GetDistance(r) < bestD
+			best = r
+			bestD = a.GetDistance(r)
+		EndIf
+	EndIf
+	If kFall4096
+		r = Game.FindClosestReferenceOfAnyTypeInList(kFall4096, x, y, z + 4096.0, afRadius)
+		If r && a.GetDistance(r) < bestD
+			best = r
+			bestD = a.GetDistance(r)
+		EndIf
+	EndIf
+	return best
+EndFunction
+
+int Function WalkSlotOf(Actor a)
+	If !a || walkActor.length < 4
+		return -1
+	EndIf
+	return walkActor.Find(a)
+EndFunction
+
+bool Function StartWalk(Actor a)
+	EnsureTravel()
+	If !a || !TravelQuest || !TravelQuest.IsRunning() || kDest.length < 4
+		return false
+	EndIf
+	If WalkSlotOf(a) >= 0
+		return true
+	EndIf
+	int s = walkActor.Find(None)
+	If s < 0
+		return false
+	EndIf
+	If !kDest[s] || !kWalkActorAlias[s]
+		return false
+	EndIf
+	kDest[s].MoveTo(a)
+	kDest[s].SetPosition(fFoundX, fFoundY, fFoundZ)
+	walkActor[s] = a
+	walkWait[s] = 0.0
+	walkTub[s] = bFoundTub
+	walkTubX[s] = fFoundTubX
+	walkTubY[s] = fFoundTubY
+	walkTubZ[s] = fFoundTubZ
+	walkLastX[s] = a.GetPositionX()
+	walkLastY[s] = a.GetPositionY()
+	walkLastZ[s] = a.GetPositionZ()
+	walkStall[s] = 0
+	walkRetries[s] = 0
+	nWalks += 1
+	kWalkActorAlias[s].ForceRefTo(a)
+	a.EvaluatePackage()
+	string kind = "open water"
+	If iFoundKind == 2
+		If bFoundTub
+			kind = "a tub (will step in at the rim)"
+		Else
+			kind = "a pool or tub"
+		EndIf
+	EndIf
+	Log("WashUp: " + a.GetDisplayName() + " walks to " + kind + " (" + (a.GetDistance(kDest[s]) as int) + " units)")
+	Schedule()
+	return true
+EndFunction
+
+bool Function CanSeeWaterPoint(Actor a, float wx, float wy, float wz)
+	If !a || !kProbe
+		return false
+	EndIf
+	If kProbe.IsDisabled()
+		kProbe.EnableNoWait()
+	EndIf
+	; Check LOS at chest/head height above the water so rims, ladders and stairs don't block it, while room walls do
+	MoveProbe(wx, wy, wz + 75.0, a)
+	return a.HasLOS(kProbe)
+EndFunction
+
+Function TickWalks()
+	EnsureTravel()
+	int i = 0
+	While i < 4
+		Actor a = walkActor[i]
+		If a
+			walkWait[i] = walkWait[i] + POLL
+			string why = WalkAbortReason(a)
+			float need = WALK_ARRIVE
+			If walkTub[i]
+				need = WALK_ARRIVE_TUB
+			EndIf
+			float dist = 99999.0
+			float wx = 0.0
+			float wy = 0.0
+			float wz = 0.0
+			If kDest[i]
+				dist = a.GetDistance(kDest[i])
+				wx = kDest[i].GetPositionX()
+				wy = kDest[i].GetPositionY()
+				wz = kDest[i].GetPositionZ()
+			EndIf
+			If walkTub[i]
+				wx = walkTubX[i]
+				wy = walkTubY[i]
+				wz = walkTubZ[i]
+			EndIf
+			; Track whether the NPC is still making progress or stopped at a rim/ladder/wall
+			float cx = a.GetPositionX()
+			float cy = a.GetPositionY()
+			float cz = a.GetPositionZ()
+			float mdx = cx - walkLastX[i]
+			float mdy = cy - walkLastY[i]
+			float mdz = cz - walkLastZ[i]
+			walkLastX[i] = cx
+			walkLastY[i] = cy
+			walkLastZ[i] = cz
+			If (mdx * mdx + mdy * mdy + mdz * mdz) <= 256.0
+				walkStall[i] = walkStall[i] + 1
+			Else
+				walkStall[i] = 0
+			EndIf
+			If why != ""
+				Log("WashUp walk aborted for " + a.GetDisplayName() + ": " + why)
+				ClearWalk(i, false)
+				SkyrimNetApi.GenerateNPCThought(a, why)
+			ElseIf (!walkTub[i] && InWaterNow(a)) || dist <= need
+				ArriveAndWash(i, false)
+			ElseIf walkStall[i] >= 2 && dist <= 260.0
+				bool canSee = CanSeeWaterPoint(a, wx, wy, wz)
+				If canSee
+					Log("WashUp: " + a.GetDisplayName() + " reached the water edge (" + (dist as int) + " units) and steps in")
+					ArriveAndWash(i, true)
+				ElseIf walkRetries[i] == 0 && kDest[i] && kProbe
+					; Blocked by a wall beside a tub/pool: try snapping destination to the opposite side
+					float ox = wx + (wx - cx)
+					float oy = wy + (wy - cy)
+					MoveProbe(ox, oy, wz, a)
+					PO3_SKSEFunctions.MoveToNearestNavmeshLocation(kProbe)
+					kDest[i].SetPosition(kProbe.GetPositionX(), kProbe.GetPositionY(), kProbe.GetPositionZ())
+					walkRetries[i] = 1
+					walkStall[i] = 0
+					walkWait[i] = 0.0
+					a.EvaluatePackage()
+					Log("WashUp: " + a.GetDisplayName() + " stopped behind a wall (" + (dist as int) + " units), trying opposite side of water")
+				ElseIf walkWait[i] >= WALK_TIMEOUT
+					Log("WashUp walk timed out for " + a.GetDisplayName() + " after " + (WALK_TIMEOUT as int) + " s (still " + (dist as int) + " units away, LOS=" + canSee + ")")
+					ClearWalk(i, false)
+					SkyrimNetApi.GenerateNPCThought(a, "You wanted to wash, but you could not reach the water.")
+				EndIf
+			ElseIf walkWait[i] >= WALK_TIMEOUT
+				bool canSee2 = dist <= 260.0 && CanSeeWaterPoint(a, wx, wy, wz)
+				If canSee2
+					Log("WashUp: " + a.GetDisplayName() + " timed out right beside the water (" + (dist as int) + " units); stepping in")
+					ArriveAndWash(i, true)
+				Else
+					Log("WashUp walk timed out for " + a.GetDisplayName() + " after " + (WALK_TIMEOUT as int) + " s (still " + (dist as int) + " units away, LOS=" + canSee2 + ")")
+					ClearWalk(i, false)
+					SkyrimNetApi.GenerateNPCThought(a, "You wanted to wash, but you could not reach the water.")
+				EndIf
+			EndIf
+		EndIf
+		i += 1
+	EndWhile
+EndFunction
+
+string Function WalkAbortReason(Actor a)
+	If !a || a.IsDead()
+		return "You wanted to wash, but you cannot."
+	ElseIf a.IsInCombat()
+		return "You wanted to wash, but you are in the middle of a fight."
+	ElseIf a.IsWeaponDrawn()
+		return "You wanted to wash, but your weapon is still drawn."
+	ElseIf InScene(a)
+		return "You wanted to wash, but you are busy with something else right now."
+	EndIf
+	return ""
+EndFunction
+
+Function ArriveAndWash(int s, bool abStepIn = false)
+	Actor a = walkActor[s]
+	bool tub = walkTub[s]
+	float tx = walkTubX[s]
+	float ty = walkTubY[s]
+	float tz = walkTubZ[s]
+	float dx = 0.0
+	float dy = 0.0
+	float dz = 0.0
+	bool hasDest = kDest.length > s && kDest[s] != None
+	If hasDest
+		dx = kDest[s].GetPositionX()
+		dy = kDest[s].GetPositionY()
+		dz = kDest[s].GetPositionZ()
+	EndIf
+	ClearWalk(s, false)
+	If !a || a.IsDead()
+		return
+	EndIf
+	bool stepped = false
+	If tub
+		a.SetPosition(tx, ty, tz)
+		stepped = true
+		Log("WashUp: " + a.GetDisplayName() + " steps into the tub/pool")
+	ElseIf abStepIn && hasDest
+		a.SetPosition(dx, dy, dz)
+		stepped = true
+		Log("WashUp: " + a.GetDisplayName() + " steps into the water")
+	EndIf
+	bool waterReq = gWaterReq && gWaterReq.GetValue() == 1.0
+	If waterReq && !stepped && !HasWater(a)
+		SkyrimNetApi.GenerateNPCThought(a, "You wanted to wash, but there is no water here.")
+		Log("WashUp refused for " + a.GetDisplayName() + " after walking: no water at the destination")
+		return
+	EndIf
+	bool soap = gSoapReq && gSoapReq.GetValue() == 1.0
+	Log("WashUp: " + a.GetDisplayName() + " starts to wash after walking (soap " + soap + ")")
+	int h = ModEvent.Create("OBDC_DoWash")
+	If h
+		ModEvent.PushForm(h, a)
+		ModEvent.PushBool(h, soap)
+		ModEvent.Send(h)
+	EndIf
+EndFunction
+
+Function ClearWalk(int s, bool abUnused)
+	Actor a = walkActor[s]
+	walkActor[s] = None
+	walkWait[s] = 0.0
+	walkTub[s] = false
+	If walkStall.length > s
+		walkStall[s] = 0
+		walkRetries[s] = 0
+	EndIf
+	nWalks -= 1
+	If nWalks < 0
+		nWalks = 0
+	EndIf
+	If kWalkActorAlias[s]
+		kWalkActorAlias[s].Clear()
+	EndIf
+	If a
+		a.EvaluatePackage()
+	EndIf
+EndFunction
+
+Function AbortAllWalks(string asWhy)
+	If walkActor.length < 4
+		return
+	EndIf
+	int i = 0
+	While i < 4
+		Actor a = walkActor[i]
+		If a
+			If asWhy != ""
+				SkyrimNetApi.GenerateNPCThought(a, asWhy)
+			EndIf
+			ClearWalk(i, false)
+		EndIf
+		i += 1
+	EndWhile
+EndFunction
+
+bool Function IsOurFollower(Actor a)
+	If !a
+		return false
+	EndIf
+	If a.IsPlayerTeammate()
+		return true
+	EndIf
+	Faction fol = Game.GetFormFromFile(0x5C84E, "Skyrim.esm") as Faction
+	If fol && a.GetFactionRank(fol) >= 0
+		return true
+	EndIf
+	return false
+EndFunction
+
+; =============================================================================================
+;  WashUp action (followers, and nearby NPCs if that toggle is on)
 ; =============================================================================================
 Function ApplyWashUpToggle()
 	SkyrimNetApi.SetActionCooldown(ACTION_NAME, WASHUP_COOLDOWN)
@@ -819,11 +1535,13 @@ Function WashUpNow(Actor akActor)
 		return
 	EndIf
 	If !OBDC_WashUpEnabled || OBDC_WashUpEnabled.GetValue() != 1.0
+		Log("WashUp from SkyrimNet for " + akActor.GetDisplayName() + " ignored: WashUp is off in the MCM")
 		return
 	EndIf
 	If !bDnB
 		Resolve()
 		If !bDnB
+			Log("WashUp from SkyrimNet for " + akActor.GetDisplayName() + " ignored: Dirt and Blood not found")
 			return
 		EndIf
 	EndIf
@@ -833,12 +1551,50 @@ Function WashUpNow(Actor akActor)
 		Log("WashUp refused for " + akActor.GetDisplayName() + ": " + why)
 		return
 	EndIf
+	bool inNow = InWaterNow(akActor)
+	bool waterReq = gWaterReq && gWaterReq.GetValue() == 1.0
 	bool soap = gSoapReq && gSoapReq.GetValue() == 1.0
-	int h = ModEvent.Create("OBDC_DoWash")
-	If h
-		ModEvent.PushForm(h, akActor)
-		ModEvent.PushBool(h, soap)
-		ModEvent.Send(h)
+	; Physically standing in water right now: bathe on the spot
+	If inNow
+		Log("WashUp: " + akActor.GetDisplayName() + " is already in water, washes here (soap " + soap + ")")
+		int h = ModEvent.Create("OBDC_DoWash")
+		If h
+			ModEvent.PushForm(h, akActor)
+			ModEvent.PushBool(h, soap)
+			ModEvent.Send(h)
+		EndIf
+		return
+	EndIf
+	; Feet are dry: if Walk to nearby water is on, always look for real water and walk there first
+	If bWalkToWater
+		EnsureTravel()
+		If FindWaterNear(akActor, true)
+			If StartWalk(akActor)
+				return
+			EndIf
+			SkyrimNetApi.GenerateNPCThought(akActor, "You wanted to wash, but you cannot walk to the water right now.")
+			Log("WashUp refused for " + akActor.GetDisplayName() + ": no free walk slot")
+			return
+		EndIf
+	EndIf
+	; No walkable water found (or walk toggle is off): fall back to Dirt and Blood's own spot check
+	bool hasW = HasWater(akActor)
+	If !waterReq || hasW
+		Log("WashUp: " + akActor.GetDisplayName() + " washes in place (waterReq=" + waterReq + ", hasWater=" + hasW + ", walk=" + bWalkToWater + ", soap " + soap + ")")
+		int h2 = ModEvent.Create("OBDC_DoWash")
+		If h2
+			ModEvent.PushForm(h2, akActor)
+			ModEvent.PushBool(h2, soap)
+			ModEvent.Send(h2)
+		EndIf
+		return
+	EndIf
+	If !bWalkToWater
+		SkyrimNetApi.GenerateNPCThought(akActor, "You wanted to wash, but there is no water here. You would need a river, a lake or a waterfall.")
+		Log("WashUp refused for " + akActor.GetDisplayName() + ": no water here (walk to water is off)")
+	Else
+		SkyrimNetApi.GenerateNPCThought(akActor, "You wanted to wash, but there is no water nearby. You would need a river, a lake, a pool or a tub.")
+		Log("WashUp refused for " + akActor.GetDisplayName() + ": no real water in range (" + (fWaterSearchRadius as int) + " units)")
 	EndIf
 EndFunction
 
@@ -849,13 +1605,21 @@ string Function WashBlocker(Actor a)
 		return "You wanted to wash, but your weapon is still drawn."
 	ElseIf InScene(a)
 		return "You wanted to wash, but you are busy with something else right now."
-	ElseIf kBathingActors.HasForm(a)
+	ElseIf kBathingActors && kBathingActors.HasForm(a)
 		return "You are already washing."
-	ElseIf gWaterReq && gWaterReq.GetValue() == 1.0 && !HasWater(a)
-		return "You wanted to wash, but there is no water here. You would need a river, a lake or a waterfall."
-	ElseIf gSoapReq && gSoapReq.GetValue() == 1.0 && (!kSoaps || !PO3_SKSEFunctions.FindFirstItemInList(a, kSoaps))
+	ElseIf WalkSlotOf(a) >= 0
+		return "You are already on your way to wash."
+	ElseIf !IsOurFollower(a)
+		If !OBDC_AllNPCsWashUp || OBDC_AllNPCsWashUp.GetValue() != 1.0
+			return "You wanted to wash, but only followers wash on their own."
+		ElseIf a.GetParentCell() != PlayerRef.GetParentCell() && a.GetDistance(PlayerRef) > fWaterSearchRadius
+			return "You wanted to wash, but the water is not nearby."
+		EndIf
+	EndIf
+	If gSoapReq && gSoapReq.GetValue() == 1.0 && (!kSoaps || !PO3_SKSEFunctions.FindFirstItemInList(a, kSoaps))
 		return "You wanted to wash, but you have no soap."
 	EndIf
+	; Water is checked in WashUpNow so we can walk to it first when that toggle is on.
 	return ""
 EndFunction
 
@@ -874,6 +1638,21 @@ EndFunction
 
 ; Same water rule as Dirt and Blood's own soap: the waterfall lists at the same heights and radii,
 ; or a WadeInWater spell; swimming and po3's in-water check count too.
+bool Function InWaterNow(Actor a)
+	If !a
+		return false
+	EndIf
+	If a.IsSwimming() || PO3_SKSEFunctions.IsActorInWater(a)
+		return true
+	EndIf
+	If kWade1 && a.HasSpell(kWade1)
+		return true
+	ElseIf kWade2 && a.HasSpell(kWade2)
+		return true
+	EndIf
+	return false
+EndFunction
+
 bool Function HasWater(Actor a)
 	If a.IsSwimming() || PO3_SKSEFunctions.IsActorInWater(a)
 		return true
@@ -916,7 +1695,88 @@ EndEvent
 ; =============================================================================================
 Function Log(string asMsg)
 	Debug.Trace("[OBDC] " + asMsg)
+	LogFileLine(asMsg)      ; 0.4
 	If bDebug
 		Debug.Notification("OBDC: " + asMsg)
 	EndIf
+EndFunction
+
+; =============================================================================================
+;  0.4: own log file for bug reports: Data/SKSE/Plugins/OBloodDirtCum.log (MO2: overwrite).
+;  PapyrusUtil soft check (without it nothing is written). A header per game load, then one line
+;  per event; restarts after 10 game loads (StorageUtilData/OBloodDirtCum_log.json), at most
+;  2000 lines per game load. No polling.
+; =============================================================================================
+bool Property bLogFile = true Auto Hidden
+string Property LOG_FILE = "Data/SKSE/Plugins/OBloodDirtCum.log" AutoReadOnly
+string Property LOG_STATE = "OBloodDirtCum_log" AutoReadOnly
+bool bLogPU = false
+int iLogLines = 0
+
+bool Function PapyrusUtilOK()
+	return SKSE.GetPluginVersion("papyrusutil plugin") > 0
+EndFunction
+
+Function LogSessionStart()
+	bLogPU = PapyrusUtilOK()
+	iLogLines = 0
+	If !bLogPU || !bLogFile
+		return
+	EndIf
+	int n = JsonUtil.GetIntValue(LOG_STATE, "session", 0) + 1
+	bool fresh = n > 10 || !MiscUtil.FileExists(LOG_FILE)
+	If fresh
+		n = 1
+	EndIf
+	JsonUtil.SetIntValue(LOG_STATE, "session", n)
+	JsonUtil.Save(LOG_STATE)
+	string h = "===== O'Blood, Dirt and Cum 0.5.2 | game load " + n + " of 10 in this file | game time " + Utility.GameTimeToString(Utility.GetCurrentGameTime()) + " ====="
+	MiscUtil.WriteToFile(LOG_FILE, h + "\n", !fresh, true)
+EndFunction
+
+Function LogFileLine(string s)
+	If !bLogPU || !bLogFile || iLogLines >= 2000
+		return
+	EndIf
+	iLogLines += 1
+	If iLogLines == 2000
+		s += "\n[OBDC] (2000 lines this game load: the rest only goes to Papyrus.0.log)"
+	EndIf
+	MiscUtil.WriteToFile(LOG_FILE, "[OBDC] " + s + "\n", true, true)
+EndFunction
+
+Function LogToggled()
+	If bLogFile
+		LogSessionStart()
+		LogStartup()
+	EndIf
+EndFunction
+
+string Function YN(bool b)
+	If b
+		return "yes"
+	EndIf
+	return "no"
+EndFunction
+
+Function LogStartup()
+	If !bLogPU || !bLogFile
+		return
+	EndIf
+	Log("found: Dirt and Blood plugin " + YN(Game.IsPluginInstalled(DNB_ESP)) + " (forms OK " + YN(bDnB) + ") | Malignis patch " + YN(bMalignisLoaded) + " | OCum " + YN(bOCum) + " | Tull Animated Creampie " + YN(Game.IsPluginInstalled(TULL_ESP)) + " | Liquid Pack v2 " + YN(Game.IsPluginInstalled(LIQUID_ESP)) + " | OStimNet (TT_OStimNet.esp) " + YN(Game.IsPluginInstalled("TT_OStimNet.esp")) + " | SkyrimNet " + YN(Game.IsPluginInstalled("SkyrimNet.esp")) + " | WadeInWater " + YN(Game.IsPluginInstalled("WadeInWater.esp")) + " | powerofthree " + YN(SKSE.GetPluginVersion("powerofthree's Papyrus Extender") > 0) + " | RaceMenu (skee) " + YN(SKSE.GetPluginVersion("skee") > 0) + " | settings.json " + YN(JsonUtil.JsonExists(SETTINGS_FILE)))
+	bool prompt = OBDC_PromptEnabled && OBDC_PromptEnabled.GetValue() == 1.0
+	bool cumPrompt = OBDC_CumPromptEnabled && OBDC_CumPromptEnabled.GetValue() == 1.0
+	string fact = "off"
+	If !bOCum
+		fact = "silent (no OCum)"
+	ElseIf prompt && cumPrompt
+		If Game.IsPluginInstalled("TT_OStimNet.esp")
+			fact = "OStimNet found: its cum description wins whenever it has text; this mod adds the short fact only when OStimNet's is empty"
+		Else
+			fact = "no OStimNet: this mod adds the short fact while OCum marks someone"
+		EndIf
+	EndIf
+	Log("settings: bio facts " + YN(prompt) + " | cum in bios " + YN(cumPrompt) + " | cum fact: " + fact)
+	Log("settings: state events " + YN(bStateEvents) + " | narration " + YN(bNarration) + " | bath memories " + YN(bMemories) + " | onlookers " + YN(bBystanders) + " | WashUp " + YN(OBDC_WashUpEnabled && OBDC_WashUpEnabled.GetValue() == 1.0) + " | baths wash cum off " + YN(bCumWash) + " | cum narration " + YN(bCumNarration) + " | Malignis flag " + YN(bMalignis) + " | debug " + YN(bDebug))
+	Log("settings: open bathing is normal " + YN(OBDC_NormBathing && OBDC_NormBathing.GetValue() == 1.0) + " | intimacy in bathing spots is normal " + YN(OBDC_NormBathingSex && OBDC_NormBathingSex.GetValue() == 1.0) + " | walk to nearby water " + YN(bWalkToWater) + " | water search range " + (fWaterSearchRadius as int) + " | non-followers can WashUp " + YN(OBDC_AllNPCsWashUp && OBDC_AllNPCsWashUp.GetValue() == 1.0) + " | nearby water now " + (OBDC_NearbyWater.GetValue() as int))
 EndFunction

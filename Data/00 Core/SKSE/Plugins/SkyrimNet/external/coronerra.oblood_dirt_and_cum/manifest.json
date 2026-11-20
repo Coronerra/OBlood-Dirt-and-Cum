@@ -2,8 +2,8 @@
     "id": "coronerra.oblood_dirt_and_cum",
     "type": "bundle",
     "title": "O'Blood, Dirt and Cum",
-    "tagline": "SkyrimNet knows when someone is dirty, bloody or bathing (Dirt and Blood) and when someone has cum on them (OCum). Each is optional; with both, a bath washes the cum off.",
-    "description": "SkyrimNet companion for Dirt and Blood - Dynamic Visuals and/or OCum. Each is optional and detected at run time; at least one is needed. With Dirt and Blood: a character_bio prompt states plain facts about dirt and blood, plus state events, bath memories and a WashUp action that follows Dirt and Blood's soap and water rules (a companion, not a replacement). With OCum: a short \"### Cum covering\" fact tells SkyrimNet who has cum on them, only when OStimNet's own OCum description has nothing to say. With both: any real Dirt and Blood bath also washes OCum's cum off. By That Guy (Coronerra).",
+    "tagline": "SkyrimNet knows when someone is dirty, bloody or bathing (Dirt and Blood) and when someone has cum on them (OCum). Each is optional; with both, a bath washes the cum off. NPCs can walk to nearby real water to wash.",
+    "description": "SkyrimNet companion for Dirt and Blood - Dynamic Visuals and/or OCum. Each is optional and detected at run time; at least one is needed. With Dirt and Blood: a character_bio prompt states plain facts about dirt and blood, plus state events, bath memories and a WashUp action that follows Dirt and Blood's soap and water rules (a companion, not a replacement). Since 0.5, WashUp can walk the bather to nearby real water (streams, lakes, waterfalls, pools and tubs; fake decorative water is ignored), nearby non-followers can wash if that toggle is on, and a user_final_instructions submodule states that open and communal bathing, and intimacy in those places, is ordinary Skyrim custom. With OCum: a short \"### Cum covering\" fact tells SkyrimNet who has cum on them, only when OStimNet's own OCum description has nothing to say. With both: any real Dirt and Blood bath also washes OCum's cum off. By That Guy (Coronerra).",
     "author": "That Guy (Coronerra)",
     "tags": [
         "Action",
@@ -11,7 +11,7 @@
     ],
     "nsfw": true,
     "icon": "scroll",
-    "version": "0.3.0",
+    "version": "0.5.2",
     "min_skyrimnet_version": "0.28.0",
     "mods": [
         {

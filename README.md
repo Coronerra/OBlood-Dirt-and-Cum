@@ -2,22 +2,24 @@
 
 # O'Blood, Dirt and Cum
 
-**v0.3** · By **That Guy (Coronerra)** · Skyrim Special Edition · ESL-flagged plugin · Adults only
+**v0.5.2** · By **That Guy (Coronerra)** · Skyrim Special Edition · ESL-flagged plugin · Adults only
 
-**[Download v0.3](https://github.com/Coronerra/OBlood-Dirt-and-Cum/releases/tag/v0.3)** (`OBlood_Dirt_and_Cum_0.3.zip`) · [Changelog](CHANGELOG.md) · [Earlier v0.2](https://github.com/Coronerra/OBlood-Dirt-and-Cum/releases/tag/v0.2) · [v0.1](https://github.com/Coronerra/OBlood-Dirt-and-Cum/releases/tag/v0.1) · License: [MIT for coronerra's work](LICENSE)
+**[Download v0.5.2](https://github.com/Coronerra/OBlood-Dirt-and-Cum/releases/tag/v0.5.2)** (`OBlood_Dirt_and_Cum_0.5.2.zip`) · [Changelog](CHANGELOG.md) · [Earlier v0.3](https://github.com/Coronerra/OBlood-Dirt-and-Cum/releases/tag/v0.3) · [v0.2](https://github.com/Coronerra/OBlood-Dirt-and-Cum/releases/tag/v0.2) · [v0.1](https://github.com/Coronerra/OBlood-Dirt-and-Cum/releases/tag/v0.1) · License: [MIT for coronerra's work](LICENSE)
 
 A small, standalone **SkyrimNet companion for [Dirt and Blood - Dynamic Visuals](https://www.nexusmods.com/skyrimspecialedition/mods/38886) and/or OCum**. Since 0.2, **Dirt and Blood and OCum are each optional**: the mod looks for both when the game loads and does what it can with what it finds. You need **at least one** of them for it to do anything.
 
 | You have | What it does |
 |---|---|
-| **Dirt and Blood + OCum** | Everything: dirt, blood and cum facts in SkyrimNet bios, state and bath events, bath memories, WashUp for followers, and a real Dirt and Blood bath washes OCum's cum off (section 6). |
-| **Dirt and Blood only** | The Dirt and Blood companion: dirt and blood facts, state and bath events, bath memories, WashUp. Every OCum part stays silent. |
+| **Dirt and Blood + OCum** | Everything: dirt, blood and cum facts in SkyrimNet bios, state and bath events, bath memories, WashUp (followers, and nearby NPCs if that toggle is on; they can walk to nearby real water), bathing customs, and a real Dirt and Blood bath washes OCum's cum off (section 6). |
+| **Dirt and Blood only** | The Dirt and Blood companion: dirt and blood facts, state and bath events, bath memories, WashUp (with walk-to-water), bathing customs. Every OCum part stays silent. |
 | **OCum only** | An OCum to SkyrimNet link: NPCs (and you) are told who "has cum on them" (or, with OStimNet, OStimNet's own detailed description is used; see [OStimNet](#ostimnet-works-alongside-it)). No Papyrus runs for it at all; the bio prompt reads OCum directly. No WashUp, no dirt or blood, no bath wash-off. |
 | **Neither** | Nothing. The plugin loads safely and the MCM says both are missing. |
 
 When Dirt and Blood is installed this is a companion for it, **not a replacement**: Dirt and Blood still does all the dirt, blood and bathing; this mod tells SkyrimNet about it.
 
-This is a test build (0.3). It compiles, and the plugin and installer were checked, but it has not been played in game yet. Please report problems on [GitHub Issues](https://github.com/Coronerra/OBlood-Dirt-and-Cum/issues) with your Papyrus log (lines start with `[OBDC]`).
+> **Note on water and player homes.** Rivers, streams, lakes, and other open bodies of water work reliably. **Custom player homes, rimmed tubs, and walled or ladder-entry pools may or may not work**, depending on each home's navmesh and water setup. NPCs may walk up to the edge and stop if Skyrim's pathfinding cannot navigate stairs, ladders, or walls around the basin.
+
+0.5.2 is save-safe over 0.4 and earlier 0.5 test builds (all 0.4 FormIDs preserved). Please report problems on [GitHub Issues](https://github.com/Coronerra/OBlood-Dirt-and-Cum/issues) with `OBloodDirtCum.log` attached (see [Troubleshooting / log files](#troubleshooting--log-files)).
 
 ## Contents
 1. [What it does](#1-what-it-does)
@@ -27,13 +29,13 @@ This is a test build (0.3). It compiles, and the plugin and installer were check
 5. [The WashUp action](#5-the-washup-action)
 6. [OCum: washing cum off in a bath](#6-ocum-washing-cum-off-in-a-bath)
 7. [For modders: mod events](#7-for-modders-mod-events)
-8. [Known limits](#8-known-limits)
+8. [Known limits](#8-known-limits) · [Troubleshooting / log files](#troubleshooting--log-files)
 9. [Uninstall](#9-uninstall)
 10. [Repository contents and building](#10-repository-contents-and-building)
 11. [Credits and permissions](#11-credits-and-permissions)
 
 ## 1. What it does
-- **Hygiene in character bios.** The prompt `0172_obdc_hygiene.prompt` (a SkyrimNet `character_bio` submodule) states plain facts under `## Hygiene`, such as "Lydia is bloodstained and very dirty." or "You are washing right now." A separate submodule, `0402_obdc_cum_covering.prompt`, adds "Lydia has cum on them." under `### Cum covering` when needed (see [OStimNet](#ostimnet-works-alongside-it)). Neither tells anyone how to react; their personality decides that.
+- **Hygiene in character bios.** The prompt `0172_obdc_hygiene.prompt` (a SkyrimNet `character_bio` submodule) states plain facts under `## Hygiene`, such as "Lydia is bloodstained and very dirty." or "You are washing right now." A separate submodule, `0402_obdc_cum_covering.prompt`, adds "Lydia has cum on them." under `### Cum covering` when needed (see [OStimNet](#ostimnet-works-alongside-it)). Neither tells anyone how to react; their personality decides that. A separate `user_final_instructions` submodule, `0503_obdc_bathing_norms.prompt`, states the bathing customs and (when the walk-to-water check has found some) that a pool, tub or open water is nearby.
   - It stays quiet for Clean and Dirt1 (lightly dusty is normal in Skyrim).
   - NPC dirt and blood only appear while the matching Dirt and Blood option is on (NPCs get bloody, bandit dirt, profession dirt). If you turned those off in Dirt and Blood's MCM, NPCs show nothing.
   - The dirt and blood facts appear only with Dirt and Blood installed.
@@ -84,7 +86,7 @@ Other optional mods:
 Not needed: Bathing in Skyrim, BiS SN-SA, SeverActions.
 
 ## 3. Install
-1. Install `OBlood_Dirt_and_Cum_0.2.zip` (updating from 0.1: just replace it in your mod manager; same plugin name, settings are kept) with your mod manager. The installer has one option:
+1. Install `OBlood_Dirt_and_Cum_0.5.2.zip` (updating from 0.1–0.4 or an earlier 0.5 test build: just replace it in your mod manager; same plugin name, all 0.4 FormIDs preserved, earlier settings are kept) with your mod manager. The installer has one option:
    - **"I use Malignis Animations with Dirt and Blood"**: only matters with Dirt and Blood. Tick it only if you use the Malignis Animations bathing patch. It installs no Malignis files; it only sets `"malignis": 1` in `SKSE/Plugins/OBlood_Dirt_and_Cum/settings.json`. The flag is shown in the MCM and used in the log. Bath ends are always detected the same way (wait until the bath is really over, at most 150 s), so leaving it unticked is safe.
 2. Enable `OBlood_Dirt_and_Cum.esp`. It is ESL-flagged, with `Skyrim.esm` as its only master. Load order does not matter.
 3. **Remove any old hygiene overlay prompt** (Dirt and Blood users). Some setups have an older user overlay, `SKSE/Plugins/SkyrimNet/overlay/prompts/submodules/character_bio/1010_dirtandblood.prompt` (credited to Min), usually in the mod manager's overwrite folder. With both installed, characters get two hygiene blocks. That overlay also checks EditorIDs that do not exist in Dirt and Blood 2.37 and always prints its header. Move it out of the overlay folder or delete it. This mod never touches it for you.
@@ -92,35 +94,42 @@ Not needed: Bathing in Skyrim, BiS SN-SA, SeverActions.
 
 ## 4. Settings
 MCM page **O'Blood, Dirt and Cum**. The Status block shows Dirt and Blood found / not installed, OCum found / not installed, and the mode. Settings that need a missing mod are greyed out.
-- **Hygiene in character bios** (on; needs either mod). Master switch for the bio facts. Global `OBDC_PromptEnabled`.
+- **Hygiene in character bios** (on; needs either mod). Master switch for the bio facts, and for the bathing-customs text. Global `OBDC_PromptEnabled`.
+- **Bathing customs** (needs Hygiene in character bios):
+  - **Open and communal bathing is normal** (on). Global `OBDC_NormBathing`. Tells SkyrimNet that bathing nude in rivers, streams, lakes, hot springs and communal pools, where others can see, is ordinary Nordic custom, not shocking or immodest. Off: that sentence is not added.
+  - **Intimacy in bathing spots is normal** (on). Global `OBDC_NormBathingSex`. Tells SkyrimNet that intimacy and sex in those same places is socially accepted as normal, not scandalous. Off: that sentence is not added.
 - Dirt and Blood (greyed out without it):
   - **Short-lived state events** (on).
   - **Narration (big moments only)** (on).
   - **Bath memories** (on).
   - **Onlookers remember baths** (on).
-  - **WashUp action (followers)** (on). Its own switch, separate from Dirt and Blood's own "NPCs bathe" option.
+  - **WashUp action** (on). Its own switch, separate from Dirt and Blood's own "NPCs bathe" option.
+  - **Walk to nearby water** (on). If WashUp is chosen and the bather is not already standing in water, they walk to the nearest real water in range and then bathe. Detection is mod-independent: real water activators, wadeable cell water, swimming and wading count; fake decorative water is ignored. Also runs a one-shot nearby-water check (on load, location change, or a new cell — no idle polling) so SkyrimNet can be told a pool, tub or open water is nearby. Off: no walking, no cell water scan, and no nearby-water prompt text; WashUp then needs them to already be in water, as in 0.4. Rivers, streams and lakes work reliably; see the note above about custom player homes, rimmed tubs, and walled or ladder-entry pools.
+  - **Water search range** (2000 units; 500–3500). How far WashUp and the nearby-water check look. Greyed out when Walk to nearby water is off.
+  - **Non-followers can WashUp** (on). Nearby adult NPCs who are not your followers can also choose WashUp. Off: followers only. Greyed out when WashUp itself is off.
   - **Malignis Animations installed** (from the installer). Only changes log text.
 - OCum:
   - **Cum in character bios** (on; needs OCum). Global `OBDC_CumPromptEnabled`. Toggles only this mod's short fact; when OStimNet already describes the cum, there is nothing extra to print anyway.
   - **Baths wash cum off** (on; needs Dirt and Blood and OCum).
   - **Narrate the cum in the bath** (on; needs Dirt and Blood and OCum).
 - **Debug notifications** (off).
+- **Write log file** (on). Writes `Data/SKSE/Plugins/OBloodDirtCum.log` (see [Troubleshooting / log files](#troubleshooting--log-files)).
 - **Reload installer settings** reads settings.json again.
 
-`SKSE/Plugins/OBlood_Dirt_and_Cum/settings.json` (PapyrusUtil format) holds the first values: `malignis`, `narration`, `memories`, `bystanders`, `state_events`, `washup`, `cum_wash`, `cum_narration`, `cum_prompt` (1 = on, 0 = off). It is read once on the first start and again with "Reload installer settings". After that the MCM values are kept in your save.
+`SKSE/Plugins/OBlood_Dirt_and_Cum/settings.json` (PapyrusUtil format) holds the first values: `malignis`, `narration`, `memories`, `bystanders`, `state_events`, `washup`, `cum_wash`, `cum_narration`, `cum_prompt`, `walk_to_water`, `water_search_radius` (units), `norm_bathing`, `norm_bathing_sex`, `all_npcs_washup` (1 = on, 0 = off, except the range). It is read once on the first start and again with "Reload installer settings". After that the MCM values are kept in your save.
 
 ## 5. The WashUp action
 Needs Dirt and Blood. Without it the action is never offered (its eligibility rule reads the global `OBDC_DnBFound`, which the script sets on every load, and the script also unregisters it).
 
-A follower can choose **WashUp** when they want to get clean. The follower then runs Dirt and Blood's own bath, `PlayBatheAnimation`, exactly as Dirt and Blood's own NPC washing does.
+A follower — and, if **Non-followers can WashUp** is on, a nearby adult NPC — can choose **WashUp** when they want to get clean. They then run Dirt and Blood's own bath, `PlayBatheAnimation`, exactly as Dirt and Blood's own NPC washing does.
 
-SkyrimNet only offers it when the character is your follower, is not in combat or in a SexLab or OStim scene, has their weapon sheathed, and the WashUp switch is on.
+SkyrimNet only offers it when Dirt and Blood is found, the WashUp switch is on, the character is not in combat or in a SexLab or OStim scene, has their weapon sheathed, and they are either your follower or **Non-followers can WashUp** is on.
 
 When the action runs, the script checks again and follows Dirt and Blood's **live** rules:
-- **Water required**: the follower must be swimming, in water, near one of Dirt and Blood's waterfall lists (same heights and radii as Dirt and Blood uses), or in WadeInWater water.
-- **Soap required**: the follower must carry a soap from Dirt and Blood's soap list. One soap is used up, as with Dirt and Blood's own soap.
+- **Water required**: they only skip the walk and bathe on the spot when they are physically standing in water (swimming, in water, or wading, including WadeInWater). A Dirt and Blood waterfall static across a room is not enough; their feet have to be wet. If **Walk to nearby water** is on and they are not yet in water, they walk to the nearest real water within the search range (a real water activator such as a tub or indoor pool, a wadeable point in a stream, river or lake, or a Dirt and Blood waterfall if no real wet pool or tub is found). Fake decorative water is ignored. Bathing starts as soon as their feet actually hit water. At a rimmed tub or pool they walk to the edge and then try to step in; **custom player homes, rimmed tubs, and walled or ladder-entry pools may or may not work** if Skyrim's pathfinding cannot navigate stairs, ladders, or walls around the basin. The walk is aborted if they enter combat, draw a weapon, start an OStim or SexLab scene, die, or take longer than about 24 seconds.
+- **Soap required**: they must carry a soap from Dirt and Blood's soap list. One soap is used up, as with Dirt and Blood's own soap.
 
-If a rule fails, the follower does not wash. They get a private thought with the reason ("there is no water here", "you have no soap"), and the action has a 30-second cooldown.
+If a rule fails, they do not wash. They get a private thought with the reason ("there is no water nearby", "you have no soap"), and the action has a 30-second cooldown.
 
 Turning WashUp off in the MCM removes the action until it is turned back on. After turning it on again, it returns the next time SkyrimNet reloads its actions, or after a save and load.
 
@@ -152,8 +161,20 @@ All four need Dirt and Blood (`OBDC_CumWashed` needs OCum too). In OCum-only mod
 - `OBDC_BathEnd`: `Event X(Form akActor, float afSeconds, bool abCompleted)`. `abCompleted` is false if the bath was still running after 150 s, or the bather died.
 - `OBDC_CumWashed`: `Event X(Form akActor)`. OCum's cum was washed off in a bath.
 
+## Troubleshooting / log files
+New in 0.4: the mod writes its own log, so you do not need Papyrus logging.
+- **Where:** `Data/SKSE/Plugins/OBloodDirtCum.log`. With MO2 it is in `overwrite/SKSE/Plugins/OBloodDirtCum.log`.
+- **What it records:** a header every game load (version, game time; every line has the real date and time); what was found (Dirt and Blood and whether its forms were found, the Malignis patch, OCum, Tull Animated Creampie, Liquid Pack v2, OStimNet, SkyrimNet, WadeInWater, powerofthree, RaceMenu, settings.json); the settings; and how the cum fact in character bios is decided (off, OCum missing, OStimNet's description first, or this mod's short fact). Then one line per event: your Dirt and Blood tier changes, bath start and end (and whether cum will be washed off), cum washed off, cum narration and why one was skipped, WashUp from SkyrimNet (accepted, refused and why, or ignored), narration lines.
+- **MCM:** O'Blood, Dirt and Cum > Other > **Write log file** (ON by default).
+- **Size:** one line per event, nothing per frame. The file starts over after 10 game loads (counter in `SKSE/Plugins/StorageUtilData/OBloodDirtCum_log.json`); at most 2000 lines per game load.
+- **Needs PapyrusUtil** (already required). Without it nothing is written and nothing errors. Every line also goes to `Papyrus.0.log` (`[OBDC]`) when Papyrus logging is on.
+- **Bug reports:** attach `OBloodDirtCum.log`. If the game crashed, copy it before you load again.
+
 ## 8. Known limits
-- **Not tested in game yet** (0.3).
+- **Custom player homes, rimmed tubs, and walled or ladder-entry pools may or may not work.** Rivers, streams, lakes, and other open bodies of water work reliably. Indoor or custom basins depend on each home's navmesh and water setup; NPCs may walk up to the edge and stop if Skyrim's pathfinding cannot navigate stairs, ladders, or walls around the basin. The walk times out after about 24 seconds.
+- **Fake decorative water is ignored**, on purpose: only real WaterType activators, Dirt and Blood waterfalls, WadeInWater, swimming, or wadeable cell water count. A house "tub" that is only a water-shader mesh will not be used.
+- **OStimNet's own location scan is not changed.** Dialogue and thoughts see the bathing-customs text. OStimNet's `ostimnet_scan_location` prompt still has its own privacy wording ("a crowded public space with no private option is a real barrier for characters who would need discretion"). This mod does not edit OStimNet, so some characters may still hesitate to start a scene in a busy hall even when the customs text is on.
+- **Outdoor shorelines** are found by sampling up to 24 points around the NPC (on demand, only when WashUp or the nearby-water check needs it). A very irregular or distant shore just outside those samples may be missed; raising the search range helps.
 - **OStimNet detection** uses `TT_OStimNet.esp`. If that plugin is active but OStimNet's SKSE DLL failed to load, OStimNet's own 0401 prompt breaks the same way; this mod's cum fact is in its own submodule, so the dirt and blood facts are not affected.
 - **Dirt and Blood is found by its plugin file** `Dirt and Blood - Dynamic Visuals.esp` (also the Nolvus file name). A renamed or merged copy is not found.
 - **OCum-only cum fact** relies on OCum's own markers (`OCum_HasCumFaction` or its cum effect); if OCum's decals are turned off in OCum, it may not mark anyone.
@@ -173,8 +194,8 @@ Turn off the MCM toggles, save, disable the plugin and remove the mod. The scrip
 - `Data/`: exactly what the release zip installs (`00 Core`, `01 Malignis Flag`, `fomod`).
 - `src/`: Papyrus sources (`OBDC_Main`, `OBDC_PlayerAlias`, `OBDC_MCM`, and `OBDC_OCum`, the only script that names OCum's and RaceMenu's types; it is only called after `OCum.esp` is confirmed loaded).
 - `tools/`: `compile.sh` (Caprica, Skyrim flags), `mkesp.py` (writes the plugin), `verify.py` (parses it back), `scrub.py` (strips build paths from .pex), `mkzip.py` (the release zip), and compile-only stubs in `tools/stubs/` (never shipped).
-- Plugin: `OBlood_Dirt_and_Cum.esp`, ESL, master `Skyrim.esm` only: quests `OBDC_Quest` and `OBDC_MCMQuest`, globals `OBDC_WashUpEnabled`, `OBDC_PromptEnabled`, `OBDC_CumPromptEnabled`, and (0.2) `OBDC_DnBFound`. No new records in 0.3.
-- SkyrimNet pack: `SKSE/Plugins/SkyrimNet/external/coronerra.oblood_dirt_and_cum/` (manifest, `prompts/submodules/character_bio/0172_obdc_hygiene.prompt`, `prompts/submodules/character_bio/0402_obdc_cum_covering.prompt`, `actions/washup.yaml`).
+- Plugin: `OBlood_Dirt_and_Cum.esp`, ESL, master `Skyrim.esm` only: quests `OBDC_Quest` and `OBDC_MCMQuest` (FormIDs unchanged from 0.1), globals `OBDC_WashUpEnabled`, `OBDC_PromptEnabled`, `OBDC_CumPromptEnabled`, and (0.2) `OBDC_DnBFound`. 0.5 adds globals `OBDC_NormBathing`, `OBDC_NormBathingSex`, `OBDC_NearbyWater`, `OBDC_AllNPCsWashUp`, quest `OBDC_TravelQuest`, and four Travel packages. All earlier FormIDs are kept.
+- SkyrimNet pack: `SKSE/Plugins/SkyrimNet/external/coronerra.oblood_dirt_and_cum/` (manifest, `prompts/submodules/character_bio/0172_obdc_hygiene.prompt`, `prompts/submodules/character_bio/0402_obdc_cum_covering.prompt`, `prompts/submodules/user_final_instructions/0503_obdc_bathing_norms.prompt`, `actions/washup.yaml`).
 
 ## 11. Credits and permissions
 - **That Guy (Coronerra)**: this mod.

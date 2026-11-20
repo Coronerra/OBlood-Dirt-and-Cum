@@ -8,6 +8,11 @@
         "washup": 1,
         "cum_wash": 1,
         "cum_narration": 1,
-        "cum_prompt": 1
+        "cum_prompt": 1,
+        "walk_to_water": 1,
+        "water_search_radius": 2000,
+        "norm_bathing": 1,
+        "norm_bathing_sex": 1,
+        "all_npcs_washup": 1
     }
 }

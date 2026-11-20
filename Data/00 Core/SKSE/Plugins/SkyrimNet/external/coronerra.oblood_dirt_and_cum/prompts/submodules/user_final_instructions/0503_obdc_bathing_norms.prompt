@@ -1,0 +1,21 @@
+{# O'Blood, Dirt and Cum v0.5 (That Guy / Coronerra). World customs for bathing; never tells anyone what to do.
+   Lives in user_final_instructions so it reaches dialogue and thoughts (and sits just after OStimNet's 0502_sex.prompt).
+   Silent when OBDC_PromptEnabled is off, or when every bathing-customs toggle is off and no nearby water is flagged. #}
+{% if render_mode == "full" or render_mode == "thoughts" or render_mode == "transform" %}
+{% if get_global_value("OBDC_PromptEnabled") == 1 %}
+{% if get_global_value("OBDC_NormBathing") == 1 or get_global_value("OBDC_NormBathingSex") == 1 or get_global_value("OBDC_NearbyWater") == 1 or get_global_value("OBDC_NearbyWater") == 2 %}
+## Bathing customs
+{% if get_global_value("OBDC_NormBathing") == 1 %}
+Across Skyrim, bathing nude in rivers, streams, lakes, hot springs, and communal bathing pools where others can see is ordinary Nordic custom, not shocking or immodest.
+{% endif %}
+{% if get_global_value("OBDC_NormBathingSex") == 1 %}
+Intimacy and sex in open-air bathing spots, hot springs, streams, lakes, and communal bathing pools is socially accepted as normal, not scandalous.
+{% endif %}
+{% if get_global_value("OBDC_NearbyWater") == 2 %}
+There is a bathing pool or tub with water nearby where people can wash.
+{% elif get_global_value("OBDC_NearbyWater") == 1 %}
+There is open water (a stream, river, lake, or waterfall) nearby suitable for bathing.
+{% endif %}
+{% endif %}
+{% endif %}
+{% endif %}
