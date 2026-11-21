@@ -2,9 +2,9 @@
 
 # O'Blood, Dirt and Cum
 
-**v0.5.2** · By **That Guy (Coronerra)** · Skyrim Special Edition · ESL-flagged plugin · Adults only
+**v0.5.7** · By **That Guy (Coronerra)** · Skyrim Special Edition · ESL-flagged plugin · Adults only
 
-**[Download v0.5.2](https://github.com/Coronerra/OBlood-Dirt-and-Cum/releases/tag/v0.5.2)** (`OBlood_Dirt_and_Cum_0.5.2.zip`) · [Changelog](CHANGELOG.md) · [Earlier v0.3](https://github.com/Coronerra/OBlood-Dirt-and-Cum/releases/tag/v0.3) · [v0.2](https://github.com/Coronerra/OBlood-Dirt-and-Cum/releases/tag/v0.2) · [v0.1](https://github.com/Coronerra/OBlood-Dirt-and-Cum/releases/tag/v0.1) · License: [MIT for coronerra's work](LICENSE)
+**[Download v0.5.7](https://github.com/Coronerra/OBlood-Dirt-and-Cum/releases/tag/v0.5.7)** (`OBlood_Dirt_and_Cum_0.5.7.zip`) · [Changelog](CHANGELOG.md) · [Earlier v0.3](https://github.com/Coronerra/OBlood-Dirt-and-Cum/releases/tag/v0.3) · [v0.2](https://github.com/Coronerra/OBlood-Dirt-and-Cum/releases/tag/v0.2) · [v0.1](https://github.com/Coronerra/OBlood-Dirt-and-Cum/releases/tag/v0.1) · License: [MIT for coronerra's work](LICENSE)
 
 A small, standalone **SkyrimNet companion for [Dirt and Blood - Dynamic Visuals](https://www.nexusmods.com/skyrimspecialedition/mods/38886) and/or OCum**. Since 0.2, **Dirt and Blood and OCum are each optional**: the mod looks for both when the game loads and does what it can with what it finds. You need **at least one** of them for it to do anything.
 
@@ -19,7 +19,7 @@ When Dirt and Blood is installed this is a companion for it, **not a replacement
 
 > **Note on water and player homes.** Rivers, streams, lakes, and other open bodies of water work reliably. **Custom player homes, rimmed tubs, and walled or ladder-entry pools may or may not work**, depending on each home's navmesh and water setup. NPCs may walk up to the edge and stop if Skyrim's pathfinding cannot navigate stairs, ladders, or walls around the basin.
 
-0.5.2 is save-safe over 0.4 and earlier 0.5 test builds (all 0.4 FormIDs preserved). Please report problems on [GitHub Issues](https://github.com/Coronerra/OBlood-Dirt-and-Cum/issues) with `OBloodDirtCum.log` attached (see [Troubleshooting / log files](#troubleshooting--log-files)).
+0.5.7 is save-safe over 0.4 and earlier 0.5 test builds (all 0.4 FormIDs preserved). Please report problems on [GitHub Issues](https://github.com/Coronerra/OBlood-Dirt-and-Cum/issues) with `OBloodDirtCum.log` attached (see [Troubleshooting / log files](#troubleshooting--log-files)).
 
 ## Contents
 1. [What it does](#1-what-it-does)
@@ -86,7 +86,7 @@ Other optional mods:
 Not needed: Bathing in Skyrim, BiS SN-SA, SeverActions.
 
 ## 3. Install
-1. Install `OBlood_Dirt_and_Cum_0.5.2.zip` (updating from 0.1–0.4 or an earlier 0.5 test build: just replace it in your mod manager; same plugin name, all 0.4 FormIDs preserved, earlier settings are kept) with your mod manager. The installer has one option:
+1. Install `OBlood_Dirt_and_Cum_0.5.7.zip` (updating from 0.1–0.4 or an earlier 0.5 test build: just replace it in your mod manager; same plugin name, all 0.4 FormIDs preserved, earlier settings are kept) with your mod manager. The installer has one option:
    - **"I use Malignis Animations with Dirt and Blood"**: only matters with Dirt and Blood. Tick it only if you use the Malignis Animations bathing patch. It installs no Malignis files; it only sets `"malignis": 1` in `SKSE/Plugins/OBlood_Dirt_and_Cum/settings.json`. The flag is shown in the MCM and used in the log. Bath ends are always detected the same way (wait until the bath is really over, at most 150 s), so leaving it unticked is safe.
 2. Enable `OBlood_Dirt_and_Cum.esp`. It is ESL-flagged, with `Skyrim.esm` as its only master. Load order does not matter.
 3. **Remove any old hygiene overlay prompt** (Dirt and Blood users). Some setups have an older user overlay, `SKSE/Plugins/SkyrimNet/overlay/prompts/submodules/character_bio/1010_dirtandblood.prompt` (credited to Min), usually in the mod manager's overwrite folder. With both installed, characters get two hygiene blocks. That overlay also checks EditorIDs that do not exist in Dirt and Blood 2.37 and always prints its header. Move it out of the overlay folder or delete it. This mod never touches it for you.
@@ -161,6 +161,18 @@ All four need Dirt and Blood (`OBDC_CumWashed` needs OCum too). In OCum-only mod
 - `OBDC_BathEnd`: `Event X(Form akActor, float afSeconds, bool abCompleted)`. `abCompleted` is false if the bath was still running after 150 s, or the bather died.
 - `OBDC_CumWashed`: `Event X(Form akActor)`. OCum's cum was washed off in a bath.
 
+## How the cum wash works (and why it took five builds)
+
+Getting a bath to *really* remove cum, and to only tell SkyrimNet it's gone when it is, took 0.5.3 through 0.5.7. What we found:
+
+1. **Several mods put cum on a character, and they stack.** OCum's RaceMenu overlays (face, body, hands, feet), Tull Animated Creampie and [Predator] Liquid Pack mesh items, the Scene Change Fix that re-equips those meshes every couple of seconds, and OStim Beast Form's mesh set and Beast Pie timers. At wash time this mod stops every one of those re-apply loops, runs OCum's own clean, removes OCum's status, strips any cum-pattern overlay still in a slot, and removes the cum mesh items (0.5.3).
+2. **It checks before anyone is told she's clean.** After the wash it looks at every overlay slot, the cum items and OCum's marks. Only when nothing is left does SkyrimNet hear that the cum is gone. Otherwise it runs a second pass, and the bath memory says some is still on her (0.5.3).
+3. **The data was gone but the picture wasn't.** The log said clean, yet cum stayed on her face. Reloading the save or leaving the room cleared it. This is a known RaceMenu issue: removed overlays keep drawing until the character's 3D is rebuilt.
+4. **Redraw tricks that didn't work.** OCum's own pseudo-armor equip/unequip trick (0.5.4) was skipped because OCum's water clean had already removed the overlay data, so there was "nothing to redraw" (fixed in 0.5.5). Redrawing *during* the bath then froze Dirt and Blood's soap overlay on (fixed in 0.5.6 by redrawing only at the end). Node override reapply and `QueueNiNodeUpdate` still left the stale cum.
+5. **What finally works (0.5.7): disable then enable, after the bath.** Once the bathing animation is over and Dirt and Blood has redressed the NPC and removed its soap, this mod waits 2 seconds, sweeps the overlays once more, then disables and enables the NPC for a split second. That rebuilds their 3D, the same as leaving and re-entering the area, and the stale cum disappears. It's skipped for the dead, riders, anyone in combat and anyone in an OStim/SexLab scene. The log line is `overlay redraw on <name>: disable/enable`.
+
+**The player can't be disabled**, so the player still gets the pseudo-armor and model refresh. If leftover cum ever shows on your own character after a bath, a save reload or a quick door transition clears it. The game already counts you as clean.
+
 ## Troubleshooting / log files
 New in 0.4: the mod writes its own log, so you do not need Papyrus logging.
 - **Where:** `Data/SKSE/Plugins/OBloodDirtCum.log`. With MO2 it is in `overwrite/SKSE/Plugins/OBloodDirtCum.log`.
@@ -212,6 +224,29 @@ No assets from other mods are included. coronerra's work is MIT (see [LICENSE](L
 ---
 
 # Changelog
+
+## 0.5.7
+- **Stale cum overlays on NPCs are finally cleared.** At bath end, an NPC who isn't dead, mounted, in combat or in a scene gets a split-second disable and enable. That's the same refresh as leaving and re-entering the area, and the only thing that reliably clears RaceMenu's leftover overlays. The player still uses the pseudo armor and model refresh. Scripts only; update in place.
+
+## 0.5.6
+- **The redraw moved to the end of the bath.** Redrawing mid-bath froze Dirt and Blood's soap overlay on. Now the mid-bath clean only removes the cum. At bath end, after a short wait for Dirt and Blood to take its soap off, this mod sweeps cum overlays once more and redraws once. Scripts only; update in place.
+
+## 0.5.5
+- **The redraw now always runs after a cum wash.** OCum's own water clean often removes the overlays before this mod's pass, so 0.5.4 found nothing to strip and skipped the redraw, leaving stale cum on screen until a reload or cell change. The redraw now runs after every cum wash, and also refreshes the character's model after the pseudo armor comes off. Scripts only; update in place.
+
+## 0.5.4
+- **Washed-off overlays now disappear right away.** RaceMenu kept drawing removed cum overlays until a save was reloaded. After a wash that removed overlays, this mod now uses OCum's own workaround once: it puts OCum's invisible pseudo armor on for a moment while the body slot is free, refreshes the overlays, then takes it off and removes it. If the pseudo armor isn't found or body armor is worn, it falls back to refreshing the overrides and redrawing the character instead. It never does this during an OStim or SexLab scene.
+- The 0.5.3 bath-end redraw was replaced by this. Scripts only; update in place.
+
+## 0.5.3
+- **A bath now checks that the cum is really gone before anyone is told so.** After OCum's own clean, this mod:
+  - stops the loops that put cum back on (Beast Form's mesh set and Beast Pie, the OCum Tull and Liquid add-on);
+  - strips every RaceMenu overlay slot on the face, body, hands and feet (normal and spell slots, both gender keys) whose texture looks like cum (path contains `cum`, `creampie`, `semen`, `facial` or `liquid`), the way OCum removes its own, and reapplies the overrides;
+  - takes off and removes every cum armor in the inventory, worn or not: the known Tull Animated Creampie and Liquid Pack v2 items, anything from `TullAnimatedCreampie.esp`, `[Predator] Liquid Pack v2.esp` or `OCum.esp`, and any armor whose name or model contains `cum`, `creampie`, `semen` or `facial`;
+  - waits a moment and checks again (overlays, items, OCum's faction and effects). Anything left gets one more pass.
+- Only a clean check logs "cum washed off" and sends `OBDC_CumWashed`. If something survives, the log names it (area, slot and texture, or item name, plugin and FormID), OCum's "has cum" faction is put back so SkyrimNet still knows, and the bath memory, narration and thought say cum is still on the face or body instead of "clean".
+- Checked once more when the bath ends (Dirt and Blood re-equips what it took off), then one face/body redraw when the bather is not in a scene.
+- Everything runs once at bath time; no polling. Scripts only; plugin and FormIDs unchanged, update in place.
 
 ## 0.5.2
 - Walk-to-water tries harder at rimmed pools and tubs: if an NPC reaches the edge and stalls for a few seconds (a rim, a ladder, or steep stairs), it checks chest-height line of sight over the water and attempts a short step into the verified wet point; if the navmesh snapped to the wrong side of a wall, it re-targets the opposite side.

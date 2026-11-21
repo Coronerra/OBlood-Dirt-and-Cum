@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.5.7
+- **Stale cum overlays on NPCs are finally cleared.** At bath end, an NPC who isn't dead, mounted, in combat or in a scene gets a split-second disable and enable. That's the same refresh as leaving and re-entering the area, and the only thing that reliably clears RaceMenu's leftover overlays. The player still uses the pseudo armor and model refresh. Scripts only; update in place.
+
+## 0.5.6
+- **The redraw moved to the end of the bath.** Redrawing mid-bath froze Dirt and Blood's soap overlay on. Now the mid-bath clean only removes the cum. At bath end, after a short wait for Dirt and Blood to take its soap off, this mod sweeps cum overlays once more and redraws once. Scripts only; update in place.
+
+## 0.5.5
+- **The redraw now always runs after a cum wash.** OCum's own water clean often removes the overlays before this mod's pass, so 0.5.4 found nothing to strip and skipped the redraw, leaving stale cum on screen until a reload or cell change. The redraw now runs after every cum wash, and also refreshes the character's model after the pseudo armor comes off. Scripts only; update in place.
+
+## 0.5.4
+- **Washed-off overlays now disappear right away.** RaceMenu kept drawing removed cum overlays until a save was reloaded. After a wash that removed overlays, this mod now uses OCum's own workaround once: it puts OCum's invisible pseudo armor on for a moment while the body slot is free, refreshes the overlays, then takes it off and removes it. If the pseudo armor isn't found or body armor is worn, it falls back to refreshing the overrides and redrawing the character instead. It never does this during an OStim or SexLab scene.
+- The 0.5.3 bath-end redraw was replaced by this. Scripts only; update in place.
+
+## 0.5.3
+- **A bath now checks that the cum is really gone before anyone is told so.** After OCum's own clean, this mod:
+  - stops the loops that put cum back on (Beast Form's mesh set and Beast Pie, the OCum Tull and Liquid add-on);
+  - strips every RaceMenu overlay slot on the face, body, hands and feet (normal and spell slots, both gender keys) whose texture looks like cum (path contains `cum`, `creampie`, `semen`, `facial` or `liquid`), the way OCum removes its own, and reapplies the overrides;
+  - takes off and removes every cum armor in the inventory, worn or not: the known Tull Animated Creampie and Liquid Pack v2 items, anything from `TullAnimatedCreampie.esp`, `[Predator] Liquid Pack v2.esp` or `OCum.esp`, and any armor whose name or model contains `cum`, `creampie`, `semen` or `facial`;
+  - waits a moment and checks again (overlays, items, OCum's faction and effects). Anything left gets one more pass.
+- Only a clean check logs "cum washed off" and sends `OBDC_CumWashed`. If something survives, the log names it (area, slot and texture, or item name, plugin and FormID), OCum's "has cum" faction is put back so SkyrimNet still knows, and the bath memory, narration and thought say cum is still on the face or body instead of "clean".
+- Checked once more when the bath ends (Dirt and Blood re-equips what it took off), then one face/body redraw when the bather is not in a scene.
+- Everything runs once at bath time; no polling. Scripts only; plugin and FormIDs unchanged, update in place.
+
 ## 0.5.2
 - Walk-to-water tries harder at rimmed pools and tubs: if an NPC reaches the edge and stalls for a few seconds (a rim, a ladder, or steep stairs), it checks chest-height line of sight over the water and attempts a short step into the verified wet point; if the navmesh snapped to the wrong side of a wall, it re-targets the opposite side.
 - Interior cell water is treated as a pool or tub rather than open water, so sunken indoor basins without navmesh at the bottom are handled as rimmed pools.

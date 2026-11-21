@@ -1,5 +1,5 @@
 Scriptname OBDC_Main extends Quest
-{O'Blood, Dirt and Cum v0.5. A SkyrimNet companion for Dirt and Blood and/or OCum, by That Guy (Coronerra).
+{O'Blood, Dirt and Cum v0.5.7. A SkyrimNet companion for Dirt and Blood and/or OCum, by That Guy (Coronerra).
  Both are optional and found at run time; at least one is needed for the mod to do anything:
    Dirt and Blood only: hygiene facts, state and bath events, bath memories, WashUp.
    OCum only: nothing runs in Papyrus; the hygiene prompt tells SkyrimNet who has cum on them.
@@ -97,6 +97,7 @@ Faction kHasCumFaction        ; OCum_HasCumFaction 0xF46
 Keyword kAppliedCum           ; OCumAppliedCum 0xF16
 Spell kOCumSpell              ; OCumSpell 0xF15
 MagicEffect fxOCum            ; OCumMagicEffect 0xF14
+Form kPseudoArmor             ; 0.5.4: OCumPseudoArmor 0xF49 (OCum's RaceMenu redraw workaround)
 Form[] kMeshItems             ; Tull / Liquid Pack items worn by the OCum Tull and Liquid add-on and by Beast Pie
 int nMeshItems = 0
 
@@ -113,6 +114,8 @@ Actor[] bathActor
 float[] bathWaited
 bool[] bathOwned
 int[] cumStage                ; 0 no cum seen at start, 1 waiting to narrate, 2 waiting to clean, 3 cleaned
+bool[] cumOk                  ; 0.5.3: true once the mid-bath clean was verified
+string sCumLeft = ""         ; 0.5.3: what the last verify still found ("" = nothing)
 float[] cumNarrAt
 float[] cumCleanAt
 Actor[] staleActor            ; still listed by Dirt and Blood long after their bath; not followed again
@@ -154,6 +157,7 @@ Function Startup()
 	bathWaited = new float[4]
 	bathOwned = new bool[4]
 	cumStage = new int[4]
+	cumOk = new bool[4]
 	cumNarrAt = new float[4]
 	cumCleanAt = new float[4]
 	staleActor = new Actor[4]
@@ -303,6 +307,7 @@ Function ResolveOCum()
 	kAppliedCum = None
 	kOCumSpell = None
 	fxOCum = None
+	kPseudoArmor = None
 	kMeshItems = new Form[8]
 	nMeshItems = 0
 	If !Game.IsPluginInstalled(OCUM_ESP)
@@ -313,6 +318,7 @@ Function ResolveOCum()
 	kAppliedCum = Game.GetFormFromFile(0xF16, OCUM_ESP) as Keyword
 	kOCumSpell = Game.GetFormFromFile(0xF15, OCUM_ESP) as Spell
 	fxOCum = Game.GetFormFromFile(0xF14, OCUM_ESP) as MagicEffect
+	kPseudoArmor = Game.GetFormFromFile(0xF49, OCUM_ESP)
 	bOCum = kHasCumFaction || kAppliedCum || fxOCum
 	If !bOCum
 		return
@@ -494,6 +500,7 @@ Function OnBathStart(Actor a, bool abOwned, int aiKind)
 	bathWaited[s] = 0.0
 	bathOwned[s] = abOwned
 	cumStage[s] = 0
+	cumOk[s] = false
 	nBaths += 1
 	; cum is looked for now, before anything is washed
 	If bOCum && bCumWash && HasCum(a)
@@ -633,6 +640,8 @@ Function EndBath(int s, bool abDone)
 	Actor a = bathActor[s]
 	float secs = bathWaited[s]
 	int cs = cumStage[s]
+	bool wasOk = cumOk[s]
+	cumOk[s] = false
 	bathActor[s] = None
 	bathWaited[s] = 0.0
 	bathOwned[s] = false
@@ -645,15 +654,17 @@ Function EndBath(int s, bool abDone)
 		return
 	EndIf
 	bool cum = false
+	bool cumClean = true
 	If cs == 1 || cs == 2
 		; a short bath (bath animations off) ended before the mid-wash clean: clean now
 		If abDone && !a.IsDead()
-			CleanCum(a)
+			cumClean = CleanCum(a)
 			cum = true
 		EndIf
-	ElseIf cs == 3
-		; Dirt and Blood re-equips what it took off at the start, which can include the mesh items: take them off again
-		RemoveMeshItems(a)
+	ElseIf cs == 3 && !a.IsDead()
+		; Dirt and Blood re-equips what it took off at the start, which can include the mesh items:
+		; take them off again, and check once more before anyone is told the cum is gone
+		cumClean = VerifyAtEnd(a, wasOk)
 		cum = true
 	EndIf
 	string nm = a.GetDisplayName()
@@ -667,7 +678,9 @@ Function EndBath(int s, bool abDone)
 	If abDone && !a.IsDead()
 		string where = PlaceOf(a)
 		If bMemories
-			If cum
+			If cum && !cumClean
+				SkyrimNetApi.RegisterPersistentEvent(nm + " bathed" + where + " and washed off the dirt and blood, but some cum is still on " + PossOf(a) + " " + LeftArea() + ".", a, None)
+			ElseIf cum
 				SkyrimNetApi.RegisterPersistentEvent(nm + " bathed" + where + " and washed off the dirt, blood and cum.", a, None)
 			Else
 				SkyrimNetApi.RegisterPersistentEvent(nm + " bathed" + where + " and washed off the dirt and blood.", a, None)
@@ -677,7 +690,15 @@ Function EndBath(int s, bool abDone)
 			TellWitnesses(a, nm + " bathed nearby" + where + ".")
 		EndIf
 		If bNarration
-			If a == PlayerRef
+			If cum && !cumClean
+				If a == PlayerRef
+					If CanNarrate()
+						Narrate(nm + " has finished bathing, but there is still cum on " + PossOf(a) + " " + LeftArea() + ".", a)
+					EndIf
+				Else
+					SkyrimNetApi.GenerateNPCThought(a, "You have just finished washing yourself, but there is still cum on your " + LeftArea() + ".")
+				EndIf
+			ElseIf a == PlayerRef
 				If CanNarrate()
 					Narrate(nm + " has finished bathing and is clean.", a)
 				EndIf
@@ -748,8 +769,10 @@ bool Function HasCum(Actor a)
 		return true     ; Beast Pie mesh set still running on them
 	ElseIf HasMeshItem(a)
 		return true     ; Tull / Liquid Pack items (counted in the inventory: Dirt and Blood may already have taken them off)
+	ElseIf OBDC_OCum.HasCumOverlay(a)
+		return true     ; any cum-looking overlay, both gender keys (0.5.3)
 	EndIf
-	return OBDC_OCum.HasCumOverlay(a)
+	return CumItemsOn(a, false) != ""     ; any other cum armor in the inventory (0.5.3)
 EndFunction
 
 bool Function HasMeshItem(Actor a)
@@ -770,7 +793,7 @@ Function CumTick(int s)
 		CumNarration(bathActor[s])
 	ElseIf cs == 2 && bathWaited[s] >= cumCleanAt[s]
 		cumStage[s] = 3
-		CleanCum(bathActor[s])
+		cumOk[s] = CleanCum(bathActor[s], false)   ; 0.5.6: no redraw mid-bath (it froze Dirt and Blood's soap on); the bath end redraws
 	EndIf
 EndFunction
 
@@ -813,47 +836,205 @@ Function CumNarration(Actor a)
 	Log("narration: " + t)
 EndFunction
 
-; OCum's own clean (as its water clean does), whatever OCum's "clean cum when entering water" option says.
-Function CleanCum(Actor a)
+; 0.5.3: a full wash, then a check. Returns true only once nothing is left on them.
+; 1) OCum's own clean (as its water clean does, whatever OCum's "clean cum when entering water" option says),
+; 2) the loops that put cum back on are stopped, 3) OBDC strips every cum-looking overlay slot itself and
+; 4) takes off every cum mesh item, 5) after a short wait it checks again; one more pass if anything is left.
+; Only "cum washed off" and OBDC_CumWashed when the check is clean; otherwise OCum's faction is put back
+; so SkyrimNet still knows. One-shot at bath time; no polling.
+bool Function CleanCum(Actor a, bool abRedraw = true)
 	If !bOCum || !a
-		return
+		return true
 	EndIf
-	If kOCumSpell && fxOCum && a.HasMagicEffect(fxOCum)
-		a.DispelSpell(kOCumSpell)
+	string nm = a.GetDisplayName()
+	bool redraw = WashPass(a)
+	Utility.Wait(1.5)
+	string left = CumLeft(a)
+	If left != ""
+		Log("after the wash, still on " + nm + ": " + left + " | second pass")
+		redraw = WashPass(a) || redraw
+		Utility.Wait(1.0)
+		left = CumLeft(a)
 	EndIf
-	If kOCumQuest
-		OBDC_OCum.Clean(kOCumQuest, a)
+	; 0.5.5: always redraw. OCum's own water clean often removes the overlays before our pass runs,
+	; so we see nothing left to strip, but RaceMenu still shows the stale cum until something redraws.
+	If abRedraw
+		RedrawOverlays(a)
 	EndIf
+	return Settle(a, left)
+EndFunction
+
+; Bath end after a mid-bath clean: Dirt and Blood has put the worn items back, so strip and check once more.
+bool Function VerifyAtEnd(Actor a, bool abWasOk)
+	If !bOCum || !a
+		return true
+	EndIf
+	StopCumLoops(a)
 	RemoveMeshItems(a)
+	; 0.5.6: give Dirt and Blood time to take its soap overlay off, then sweep cum overlays once more
+	; and redraw once, after everything else has finished touching her.
+	Utility.Wait(2.0)
+	OBDC_OCum.ScanOverlays(a, true, true)
+	string left = CumLeft(a)
+	If left != ""
+		Log("at bath end, still on " + a.GetDisplayName() + ": " + left + " | another pass")
+		WashPass(a)
+		Utility.Wait(1.0)
+		left = CumLeft(a)
+	EndIf
+	RedrawOverlays(a)
+	If left == "" && abWasOk
+		return true     ; still clean, already logged and announced
+	EndIf
+	return Settle(a, left)
+EndFunction
+
+bool Function Settle(Actor a, string asLeft)
+	string nm = a.GetDisplayName()
+	sCumLeft = asLeft
+	If asLeft != ""
+		If kHasCumFaction && !a.IsInFaction(kHasCumFaction)
+			a.AddToFaction(kHasCumFaction)      ; keep the "has cum on them" fact for SkyrimNet
+		EndIf
+		Log("cum still on " + nm + ": " + asLeft)
+		return false
+	EndIf
 	int h = ModEvent.Create("OBDC_CumWashed")
 	If h
 		ModEvent.PushForm(h, a)
 		ModEvent.Send(h)
 	EndIf
-	Log("cum washed off " + a.GetDisplayName())
+	Log("cum washed off " + nm + " (checked: no cum overlays, cum items or OCum marks left)")
+	return true
 EndFunction
 
-; Backup for the Tull / Liquid Pack items. Their own loops (OCum Tull and Liquid add-on, Beast Pie) keep re-equipping
-; them while they run, so their stamps are moved on first: the old loop then stops without touching the items.
-Function RemoveMeshItems(Actor a)
-	If nMeshItems <= 0
+; Returns true if any cum overlay was on them before this pass (so they need one redraw afterwards).
+bool Function WashPass(Actor a)
+	bool had = OBDC_OCum.ScanOverlays(a, false, false) != ""
+	StopCumLoops(a)
+	If kOCumSpell
+		a.DispelSpell(kOCumSpell)
+	EndIf
+	If kOCumQuest
+		OBDC_OCum.Clean(kOCumQuest, a)
+	EndIf
+	If kHasCumFaction
+		a.RemoveFromFaction(kHasCumFaction)
+	EndIf
+	string stripped = OBDC_OCum.ScanOverlays(a, true, true)
+	If stripped != ""
+		Log("stripped overlays left after OCum's clean on " + a.GetDisplayName() + ": " + stripped)
+	EndIf
+	RemoveMeshItems(a)
+	return had
+EndFunction
+
+; 0.5.4: RaceMenu keeps drawing removed overlays until a reload. OCum's own workaround forces the redraw:
+; put its invisible pseudo armor on for a moment (only while the body slot is free, as OCum does), then take it off.
+; Once per wash, never in a scene.
+Function RedrawOverlays(Actor a)
+	If !a.Is3DLoaded()
 		return
 	EndIf
-	bool any = StorageUtil.GetIntValue(a, "OBF_BL_Set", 0) != 0
-	int i = 0
-	While i < nMeshItems && !any
-		If kMeshItems[i] && a.GetItemCount(kMeshItems[i]) > 0
-			any = true
-		EndIf
-		i += 1
-	EndWhile
-	If !any
+	If InScene(a)
+		NiOverride.ApplyNodeOverrides(a)
+		Log("overlay redraw on " + a.GetDisplayName() + ": in a scene, overrides reapplied only")
 		return
 	EndIf
+	; 0.5.7: for NPCs, a quick Disable/Enable is the only thing that reliably drops RaceMenu's stale overlays
+	; (same as leaving and re-entering the cell). Not for the player, the dead, riders, or anyone in combat.
+	If a != PlayerRef && !a.IsDead() && !a.IsOnMount() && !a.IsInCombat()
+		a.Disable(false)
+		Utility.Wait(0.1)
+		a.Enable(false)
+		Log("overlay redraw on " + a.GetDisplayName() + ": disable/enable")
+		return
+	EndIf
+	If kPseudoArmor && !a.GetWornForm(0x00000004)
+		a.EquipItem(kPseudoArmor, false, true)
+		Utility.Wait(0.05)
+		NiOverride.AddOverlays(a)
+		NiOverride.ApplyNodeOverrides(a)
+		Utility.Wait(0.05)
+		a.UnequipItem(kPseudoArmor, false, true)
+		a.RemoveItem(kPseudoArmor, 99, true, None)
+		Utility.Wait(0.1)
+		NiOverride.ApplyNodeOverrides(a)
+		a.QueueNiNodeUpdate()
+		Log("overlay redraw on " + a.GetDisplayName() + ": OCum pseudo armor")
+	Else
+		NiOverride.AddOverlays(a)
+		NiOverride.ApplyNodeOverrides(a)
+		a.QueueNiNodeUpdate()
+		Log("overlay redraw on " + a.GetDisplayName() + ": node update")
+	EndIf
+EndFunction
+
+; Moves on the stamps of every loop that re-applies cum (Beast Form's mesh set and Beast Pie, OCumTL's pie):
+; each old loop then stops at its next check without touching her again.
+Function StopCumLoops(Actor a)
 	StorageUtil.AdjustIntValue(a, "OBF_BL_Stamp", 1)
-	StorageUtil.AdjustIntValue(a, "OCumTL_Stamp0", 1)
-	StorageUtil.AdjustIntValue(a, "OCumTL_Stamp1", 1)
-	i = 0
+	int k = 0
+	While k < 6
+		StorageUtil.AdjustIntValue(a, "OCumBP_Stamp" + k, 1)
+		If k < 3
+			StorageUtil.AdjustIntValue(a, "OCumTL_Stamp" + k, 1)
+		EndIf
+		k += 1
+	EndWhile
+	StorageUtil.UnsetIntValue(a, "OBF_BL_Set")
+	StorageUtil.UnsetIntValue(a, "OBF_BL_Round")
+	StorageUtil.UnsetFloatValue(a, "OBF_BL_Last")
+EndFunction
+
+; What is still on them, as a readable list ("" = clean).
+string Function CumLeft(Actor a)
+	string left = OBDC_OCum.ScanOverlays(a, false, false)
+	string items = CumItemsOn(a, false)
+	If items != ""
+		left = Join(left, items)
+	EndIf
+	If kHasCumFaction && a.IsInFaction(kHasCumFaction)
+		left = Join(left, "OCum_HasCumFaction")
+	EndIf
+	If kAppliedCum && a.HasMagicEffectWithKeyword(kAppliedCum)
+		left = Join(left, "effect with OCumAppliedCum")
+	EndIf
+	If fxOCum && a.HasMagicEffect(fxOCum)
+		left = Join(left, "OCumMagicEffect")
+	EndIf
+	return left
+EndFunction
+
+string Function Join(string a, string b)
+	If a == ""
+		return b
+	EndIf
+	return a + "; " + b
+EndFunction
+
+; Where the leftover is, for the memory and the thought.
+string Function LeftArea()
+	If StringUtil.Find(sCumLeft, "Face ") >= 0
+		return "face"
+	EndIf
+	return "body"
+EndFunction
+
+string Function PossOf(Actor a)
+	int sex = a.GetLeveledActorBase().GetSex()
+	If sex == 0
+		return "his"
+	ElseIf sex == 1
+		return "her"
+	EndIf
+	return "their"
+EndFunction
+
+; The Tull / Liquid Pack items (known list), plus any other cum armor in their inventory, worn or not.
+; Their own loops (OCum Tull and Liquid add-on, Beast Pie) are stopped first by StopCumLoops.
+Function RemoveMeshItems(Actor a)
+	int i = 0
 	While i < nMeshItems
 		Form it = kMeshItems[i]
 		If it && a.GetItemCount(it) > 0
@@ -862,8 +1043,103 @@ Function RemoveMeshItems(Actor a)
 		EndIf
 		i += 1
 	EndWhile
-	StorageUtil.UnsetIntValue(a, "OBF_BL_Set")
-	StorageUtil.UnsetIntValue(a, "OBF_BL_Round")
+	string other = CumItemsOn(a, true)
+	If other != ""
+		Log("took off cum items on " + a.GetDisplayName() + ": " + other)
+	EndIf
+EndFunction
+
+; One pass over the inventory (only at bath time). Armor counts as cum if its name or model looks like cum,
+; or it comes from Tull Animated Creampie, Liquid Pack v2 or OCum. abRemove: unequip and remove them.
+string Function CumItemsOn(Actor a, bool abRemove)
+	string found = ""
+	Form[] hit = new Form[32]
+	int nHit = 0
+	int n = a.GetNumItems()
+	int i = 0
+	While i < n && nHit < 32
+		Armor ar = a.GetNthForm(i) as Armor
+		If ar && IsCumArmor(ar)
+			hit[nHit] = ar
+			nHit += 1
+		EndIf
+		i += 1
+	EndWhile
+	i = 0
+	While i < nMeshItems
+		Form it = kMeshItems[i]
+		If it && nHit < 32 && hit.Find(it) < 0 && a.GetItemCount(it) > 0
+			hit[nHit] = it
+			nHit += 1
+		EndIf
+		i += 1
+	EndWhile
+	i = 0
+	While i < nHit
+		Form it = hit[i]
+		found = Join(found, "item " + it.GetName() + " [" + PO3_SKSEFunctions.GetFormModName(it, false) + " " + IntToHex(it.GetFormID()) + "]")
+		If abRemove
+			a.UnequipItem(it, false, true)
+			a.RemoveItem(it, 99, true, None)
+		EndIf
+		i += 1
+	EndWhile
+	return found
+EndFunction
+
+bool Function IsCumArmor(Armor ar)
+	string mn = PO3_SKSEFunctions.GetFormModName(ar, false)
+	If mn == TULL_ESP || mn == LIQUID_ESP || mn == OCUM_ESP
+		return true
+	EndIf
+	If LooksCum(ar.GetName())
+		return true
+	EndIf
+	If LooksCum(ar.GetModelPath(true)) || LooksCum(ar.GetModelPath(false))
+		return true
+	EndIf
+	If ar.GetNumArmorAddons() > 0
+		ArmorAddon aa = ar.GetNthArmorAddon(0)
+		If aa && (LooksCum(aa.GetModelPath(false, true)) || LooksCum(aa.GetModelPath(false, false)))
+			return true
+		EndIf
+	EndIf
+	return false
+EndFunction
+
+; Case-insensitive (StringUtil.Find ignores case). Common words that merely contain "cum" are skipped.
+bool Function LooksCum(string s)
+	If s == ""
+		return false
+	EndIf
+	If StringUtil.Find(s, "creampie") >= 0 || StringUtil.Find(s, "semen") >= 0 || StringUtil.Find(s, "facial") >= 0
+		return true
+	EndIf
+	int p = StringUtil.Find(s, "cum")
+	While p >= 0
+		bool skip = false
+		If p >= 2
+			string pre = StringUtil.Substring(s, p - 2, 2)
+			skip = pre == "do" || pre == "cu" || pre == "ir" || pre == "ac"   ; document, cucumber, circum, accum
+		EndIf
+		If !skip
+			return true
+		EndIf
+		p = StringUtil.Find(s, "cum", p + 1)
+	EndWhile
+	return false
+EndFunction
+
+string Function IntToHex(int v)
+	string digits = "0123456789ABCDEF"
+	string out = ""
+	int i = 0
+	While i < 8
+		int nib = Math.LogicalAnd(Math.RightShift(v, 28 - i * 4), 0xF)
+		out += StringUtil.GetNthChar(digits, nib)
+		i += 1
+	EndWhile
+	return out
 EndFunction
 
 ; =============================================================================================
@@ -1730,7 +2006,7 @@ Function LogSessionStart()
 	EndIf
 	JsonUtil.SetIntValue(LOG_STATE, "session", n)
 	JsonUtil.Save(LOG_STATE)
-	string h = "===== O'Blood, Dirt and Cum 0.5.2 | game load " + n + " of 10 in this file | game time " + Utility.GameTimeToString(Utility.GetCurrentGameTime()) + " ====="
+	string h = "===== O'Blood, Dirt and Cum 0.5.7 | game load " + n + " of 10 in this file | game time " + Utility.GameTimeToString(Utility.GetCurrentGameTime()) + " ====="
 	MiscUtil.WriteToFile(LOG_FILE, h + "\n", !fresh, true)
 EndFunction
 
